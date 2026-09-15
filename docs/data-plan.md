@@ -110,6 +110,30 @@ NIH 영상 위에 전문가가 라벨을 붙인 공개 데이터
 - 장점: 로그인·결제 없음, 교육용 사용과 재배포 조건이 문서로 명시(원칙 8), Normal·Not Normal이 있어 원칙 5(흔함·정상 섞기)에 맞음, 영상 zip이 3.3~3.8 GB라 디스크에 들어감
 - 한계: 소견이 폐 음영(폐렴 의심) 하나뿐. 희귀 소견 없음. 다른 소견은 ChestX-Det 조건 확인 후 보강 검토
 
+## 5-2. RSNA 다운로드·라벨 구조 확인 (2026-09-15, 사용자 확정)
+
+받은 파일 (`C:\rarecase-data\rsna-pneumonia\labels\`)
+| 파일 | 바이트 기준 MB | sha256 | 실제 내용 |
+|---|---|---|---|
+| pneumonia-challenge-annotations-adjudicated-kaggle_2018.json | 49.6 | F8F5C54B…E01B18FB | md.ai 프로젝트 x9N20BZa, 30,000 study, 주석 83,809개, 라벨 그룹 7개(Default·QA·Team 1·Team 2·Team 2a·Calculated·Adjudication) |
+| pneumonia-challenge-annotations-original_2018.json | 18.7 | 5FBFA5A7…7C9F45 | 프로젝트 LxR6zdR2 "stage 1 train", 25,684 study, 라벨 2개(Lung Opacity / No Lung Opacity) |
+| pneumonia-challenge-dataset-mappings_2018.json | 16.8 | 803CE79E…BA10BF27 | 30,000행: NIH `img_id`(PNG 이름) ↔ StudyInstanceUID, NIH 원래 NLP 라벨 |
+
+영상 zip (끝부분 중앙 디렉터리만 받아 목록 확인, `tools/zip-remote-list.js`)
+- `…dataset-original_2018.zip` 3,252.6 MB = DICOM 25,684개(stage 1 train, 프로젝트 LxR6zdR2)
+- `…dataset-adjudicated-kaggle_2018.zip` 3,794.4 MB (3,978,753,654 B) = **DICOM 30,000개**(프로젝트 x9N20BZa) → 이것을 받음
+- 이름의 original/adjudicated가 내용과 직관적으로 맞지 않음. 판독 팀 기록이 있는 쪽은 x9N20BZa
+
+라벨 구조 대조 (논문 Shih 2019와 비교)
+| 항목 | 파일에서 센 값 | 논문 | 판정 |
+|---|---|---|---|
+| Team 1 + Team 2 + Team 2a 모두 판독 | 4,526 | test 4,527 | 1장 차이 |
+| Adjudication 그룹이 있는 study (STR 팀이 하나라도 있는 5,256장 중) | 1,380 | 조정 1,380 | **일치** |
+| 3팀 판독 4,526장의 Calculated 라벨 | Normal 1,439 · Not Normal 1,434 · Lung Opacity 1,639 · 없음 14 | Normal 1,455 · Not Normal 1,200 | **불일치** |
+| STR 팀이 하나만 있는 study | Team 1+2: 679, Team 1+2a: 51 | — | 논문 test 정의에 포함되는지 불명 |
+
+→ 논문의 test 세트를 파일에서 똑같이 재현하는 규칙은 **아직 못 찾음**. 정답 라벨 규칙은 사용자와 정해야 함 (6절).
+
 ## 6. 다음 단계
 
 1. NIH 전문가 라벨 파일과 README 원문 확인 (배포 조건, 라벨 목록)
