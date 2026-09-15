@@ -1,0 +1,91 @@
+{
+  "dataset": "nih-chestxray14",
+  "source": "https://nihcc.app.box.com/v/ChestXray-NIHCC",
+  "license": "Google Cloud dataset page: \"There are no restrictions on the use of the NIH chest x-ray images.\" (checked 2026-09-15). README_CHESTXRAY.pdf states no license text.",
+  "citation": [
+    "Wang X, Peng Y, Lu L, Lu Z, Bagheri M, Summers RM. ChestX-ray8. IEEE CVPR 2017, pp. 3462-3471",
+    "NIH Clinical Center is the data provider"
+  ],
+  "labelNote": "Finding Labels are NLP-mined from reports (README: accuracy estimated >90%). NOT usable as ground truth under principle 4.",
+  "downloadedAt": "2026-09-15",
+  "files": [
+    {
+      "name": "BBox_List_2017.csv",
+      "bytes": 92416,
+      "sha256": "0bbfea9d4c4e9771481b3023b1bc9f0df9dea924453b12986beb29b0c4d0c95b"
+    },
+    {
+      "name": "Data_Entry_2017_v2020.csv",
+      "bytes": 9003496,
+      "sha256": "c69a6daca3549af707ca9cacbdf9f9a7b6a9188e8c61157df653520bb72d8eb1"
+    },
+    {
+      "name": "FAQ_CHESTXRAY.pdf",
+      "bytes": 72223,
+      "sha256": "674665256e6a14c8ebaa93648f438c2b4ca21205167839559bab3ecc89b6b83a"
+    },
+    {
+      "name": "LOG_CHESTXRAY.pdf",
+      "bytes": 156290,
+      "sha256": "f63f6d0f62f2234a9901f0d0440c6d89a91ebb8458da23d0201b07068dc57953"
+    },
+    {
+      "name": "README_CHESTXRAY.pdf",
+      "bytes": 848327,
+      "sha256": "bcc8a007593e7d6a6bccbab98748427f554f0593a4901eb39e2018d5eeaa32f1"
+    },
+    {
+      "name": "test_list.txt",
+      "bytes": 435131,
+      "sha256": "38ca5ef7f756092946f57c1a59faca882ed589a1ab1f72590b45dc06c6d5e1cc"
+    },
+    {
+      "name": "train_val_list.txt",
+      "bytes": 1470907,
+      "sha256": "61fbe896321c1c1c8b75f3e4f3a08e4fef6486d95ef8a667c31d4d60dca6cb81"
+    }
+  ],
+  "counts": {
+    "images": 112120,
+    "uniqueImages": 112120,
+    "patients": 30805,
+    "view": {
+      "PA": 67310,
+      "AP": 44810
+    },
+    "sex": {
+      "M": 63340,
+      "F": 48780
+    },
+    "ageOutOfRange": 0,
+    "nlpLabels": {
+      "Cardiomegaly": 2776,
+      "Emphysema": 2516,
+      "Effusion": 13317,
+      "No Finding": 60361,
+      "Hernia": 227,
+      "Infiltration": 19894,
+      "Mass": 5782,
+      "Nodule": 6331,
+      "Atelectasis": 11559,
+      "Pneumothorax": 5302,
+      "Pleural_Thickening": 3385,
+      "Pneumonia": 1431,
+      "Fibrosis": 1686,
+      "Edema": 2303,
+      "Consolidation": 4667
+    },
+    "bboxRows": 984,
+    "bboxImages": 880,
+    "bboxLabels": {
+      "Atelectasis": 180,
+      "Cardiomegaly": 146,
+      "Effusion": 153,
+      "Infiltrate": 123,
+      "Mass": 85,
+      "Nodule": 79,
+      "Pneumonia": 120,
+      "Pneumothorax": 98
+    }
+  }
+}
