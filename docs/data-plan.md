@@ -94,6 +94,22 @@ C:\rarecase-data\                 ← 저장소 밖, 실제 영상
 - 추출 도구 `tools/nih-extract.js`: 압축을 스트리밍하며 목록의 PNG만 저장, 압축별 전체 색인·완료 표시(재실행 시 건너뜀), 저장소 안 출력 거부. 시험 `tools/test-nih-extract.js` 10/10 (가짜 파일 압축, ustar·pax, 0·512·513바이트, 잘린 압축, 없는 주소)
 - 다운로드 속도: Box 50 MB 범위 요청 1회 0.67 MB/s → 전체 41.98 GB 대략 17.8시간 (측정 1회라 어림)
 
+## 5-1. 대체 라벨 조사 (2026-09-15, Google 라벨 접근 실패 후)
+
+NIH 영상 위에 전문가가 라벨을 붙인 공개 데이터
+
+| 데이터 | 조건 (원문 확인) | 판독 방식 | 소견 | 받기 |
+|---|---|---|---|---|
+| **RSNA Pneumonia Detection Challenge 2018** | Terms PDF: "academic research and education, and other commercial or non-commercial purposes". 조건 ① 대상자 식별·연락 시도 금지 ② 공유·재배포 시 NIH 링크·CVPR 2017 인용·"NIH Clinical Center is the data provider" + RSNA 링크·Shih et al. Radiology: AI 2019 인용. ※ 데이터 설명서에는 "Non-commercial purpose"라고 적혀 있어 두 문서가 다름 → 비상업 교육용이면 둘 다 충족 | NIH 3만 장. **train: 영상의학과 1명**, **test 4,527장: 3명(STR 2 + RSNA 1)**, 합의 안 된 1,380장(30%)은 STR 판독의가 조정. 판독의 18명(16기관, 흉부영상의학 12명, 평균 경력 10.6년) | Lung Opacity / No Lung Opacity·Not Normal / Normal. 3명 판독분 중 Normal 1,455, Not Normal 1,200 → Opacity는 4,527 − 1,455 − 1,200 = 1,872 | RSNA S3, 로그인 불필요. HEAD로 확인: 원본 NIH 영상 zip 3,252.6 MB, 조정 영상 zip 3,794.4 MB, 원래 라벨 json 18.7 MB, 조정 라벨 json 49.6 MB, 대응표 json 16.8 MB |
+| ChestX-Det (Deepwise) | GitHub 저장소 LICENSE = Apache-2.0. README에는 라이선스·인용 문구 없음 → 저장소 라이선스가 영상·라벨에도 적용되는지 **확인 필요** | 영상의학과 3명, 합의 방식 README에 없음 | 13개(기흉·결절·종괴·골절·석회화·심비대 등), 박스+폴리곤 | resource.deepwise.com — 2026-09-15 응답 없음 |
+| SIIM-ACR Pneumothorax | SIIM 페이지에 조건 없음, Kaggle 규칙 **미확인** | 페이지에 없음 | 기흉 마스크 | Kaggle(계정 필요) |
+
+출처: RSNA 챌린지 페이지 https://www.rsna.org/rsnai/ai-image-challenge/rsna-pneumonia-detection-challenge-2018 · Terms PDF · Dataset Description PDF · 논문 https://pmc.ncbi.nlm.nih.gov/articles/PMC8017407/ · https://github.com/Deepwise-AILab/ChestX-Det-Dataset · https://siim.org/research-journal/siim-machine-learning-challenges/pneumothorax-kaggle-challenge/
+
+권장: **RSNA test 4,527장(3명 판독+조정)을 정답 라벨로** 사용 (원칙 4 "여러 명 합의"). train(1명 판독)은 정답으로 쓰지 않음.
+- 장점: 로그인·결제 없음, 교육용 사용과 재배포 조건이 문서로 명시(원칙 8), Normal·Not Normal이 있어 원칙 5(흔함·정상 섞기)에 맞음, 영상 zip이 3.3~3.8 GB라 디스크에 들어감
+- 한계: 소견이 폐 음영(폐렴 의심) 하나뿐. 희귀 소견 없음. 다른 소견은 ChestX-Det 조건 확인 후 보강 검토
+
 ## 6. 다음 단계
 
 1. NIH 전문가 라벨 파일과 README 원문 확인 (배포 조건, 라벨 목록)
