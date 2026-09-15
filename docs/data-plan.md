@@ -132,7 +132,21 @@ NIH 영상 위에 전문가가 라벨을 붙인 공개 데이터
 | 3팀 판독 4,526장의 Calculated 라벨 | Normal 1,439 · Not Normal 1,434 · Lung Opacity 1,639 · 없음 14 | Normal 1,455 · Not Normal 1,200 | **불일치** |
 | STR 팀이 하나만 있는 study | Team 1+2: 679, Team 1+2a: 51 | — | 논문 test 정의에 포함되는지 불명 |
 
-→ 논문의 test 세트를 파일에서 똑같이 재현하는 규칙은 **아직 못 찾음**. 정답 라벨 규칙은 사용자와 정해야 함 (6절).
+→ 논문의 test 세트를 파일에서 똑같이 재현하는 규칙은 **아직 못 찾음**.
+
+### 정답 규칙 v1 (`rsna-truth-v1`, 2026-09-15 사용자 확정)
+1. 대상: Team 1(RSNA)·Team 2(STR)·Team 2a(STR) 세 팀 모두 판독한 study (4,526)
+2. 정답: Calculated 그룹 라벨 (판독의 기록을 규칙으로 합친 값 — AI 판독 아님)
+3. 제외: 판독의 Exclude 표시 14 (이 14장은 Calculated 라벨도 없음) / 조정 판독의가 명시한 분류와 Calculated가 다름 2
+4. 박스: Lung Opacity인 경우 Calculated 박스 (원본 픽셀 좌표)
+5. NIH NLP 라벨 사용 안 함, 출력에 환자 ID 없음(나이·성별·촬영 방향만)
+
+근거 확인: 3팀 판독 중 조정된 1,350장에서 조정 판독의가 분류를 명시한 706장 중 704장이 Calculated와 일치. 명시 없이 저확률 음영·Flag만 남긴 경우는 Calculated가 판독의 다수 기록을 따름.
+
+결과 `data/manifest/rsna-truth.json` (`node tools/rsna-build-truth.js`, 시험 `tools/test-rsna-truth.js` 15/15)
+- 포함 **4,510** = 정상 1,437 · 음영 없음/비정상 1,434 · 폐 음영 1,639 (음영 전부 박스 있음)
+- 조정 거친 포함 1,348 · PA 2,425 / AP 2,085 · M 2,569 / F 1,941
+- 논문 수치(정상 1,455·비정상 1,200)와 차이는 논문 한계 절에 기록할 것
 
 ## 6. 다음 단계
 
