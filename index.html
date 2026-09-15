@@ -140,6 +140,19 @@
   .tag.normal{ color:var(--text-faint); border-color:var(--line); background:var(--panel-2); }
   .tag.scope{ color:var(--text-faint); border-color:var(--line); background:transparent; }
 
+  /* 원문 대조 전인 의학 내용 표시 (원칙 6) */
+  .unverified{
+    display:inline-block; font-family:var(--f-mono); font-size:9.5px; letter-spacing:.06em;
+    color:var(--caution); border:1px dashed rgba(224,160,60,.6);
+    border-radius:2px; padding:0 5px; margin-left:3px; vertical-align:1px; white-space:nowrap;
+  }
+  .review-note{
+    border:1px dashed rgba(224,160,60,.5); background:#16110A;
+    border-radius:var(--r); padding:7px 10px; margin-bottom:11px;
+    font-size:11.5px; color:var(--caution); line-height:1.5;
+  }
+  .empty{ color:var(--text-faint); font-size:12.5px; padding:24px 18px; }
+
   /* ── patient / interview ───────────────────────────────── */
   .vitals{
     display:grid; grid-template-columns:1fr 1fr;
@@ -319,7 +332,30 @@
     border:1.5px solid var(--ok); color:var(--ok);
     display:grid; place-items:center; font-size:14px;
   }
+  .verdict[data-v="partial"]{ border-color:var(--caution); background:#1A1408; }
+  .verdict[data-v="partial"] .mark{ border-color:var(--caution); color:var(--caution); }
+  .verdict[data-v="wrong"]{ border-color:var(--bad); background:#1A0F0E; }
+  .verdict[data-v="wrong"] .mark{ border-color:var(--bad); color:var(--bad); }
   .verdict b{ font-size:13.5px; }
+  .verdict .score-line{ display:flex; gap:10px; font-family:var(--f-mono); font-size:11px; }
+  .score-line [data-ok="1"]{ color:var(--ok); }
+  .score-line [data-ok="0"]{ color:var(--bad); }
+
+  .kbd-hint{
+    margin-top:6px; text-align:center;
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.06em; color:var(--text-faint);
+  }
+
+  .history{
+    border:1px solid var(--line); background:var(--panel-2);
+    border-radius:var(--r); padding:8px 11px;
+  }
+  .history h4{
+    margin:0; font-family:var(--f-mono); font-size:10px; letter-spacing:.08em; color:var(--ok);
+  }
+  .history[data-missed="1"]{ border-color:#4A3A1C; background:#1A1408; }
+  .history[data-missed="1"] h4{ color:var(--caution); margin-bottom:4px; }
+  .history ul{ margin:0; padding-left:18px; font-size:12px; color:var(--text-dim); line-height:1.6; }
   .verdict p{ margin:1px 0 0; font-size:11.5px; color:var(--text-dim); }
 
   .fb{ font-size:12.5px; line-height:1.65; color:var(--text-dim); }
@@ -373,120 +409,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script src="case-schema.js"></script>
+<script src="cases.js"></script>
+<script src="grading.js"></script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef } = React;
 
 /* ═══════════════════════════════════════════════════════════
-   시드 데이터 — 실제 구현에서는 /cases 응답으로 대체된다.
-
-   케이스 우선(case-first) 원칙:
-   정답 소견을 먼저 정의하고 그 소견으로 영상을 생성한다.
-   여기 correct:true 필드가 ground truth이고, 영상은 그것을
-   그리도록 지시받는다. 반대 순서는 절대 금지 — 모델이 무엇을
-   그렸는지 아무도 모르는 상태가 되기 때문.
+   케이스 데이터는 cases.js, 노출 여부 판정은 case-schema.js.
+   승인됐고 형식이 온전한 케이스만 학습자에게 보인다.
    ═══════════════════════════════════════════════════════════ */
 
-const CASES = [
-  {
-    id:'RC-014', who:'22세 남성', cc:'6개월 반복 객혈',
-    rarity:'rare', active:true, film:'pavm',
-    intro:'6개월째 가래에 피가 섞여 나온다며 내원했습니다.',
-    vitals:[['SpO₂','91 %',true],['BP','118/74',false],['HR','78 /min',false],['BT','36.6 ℃',false]],
-    questions:[
-      { q:'객혈은 언제부터 있었나요?',
-        a:'여섯 달쯤 됐어요. 가래에 피가 섞여 나오는데, 요즘은 좀 더 자주 그럽니다.' },
-      { q:'코피가 자주 나는 편인가요?',
-        a:'네, 어릴 때부터요. 한 달에 두세 번은 그냥 앉아 있다가도 납니다.' },
-      { q:'가족 중에 비슷한 증상이 있나요?',
-        a:'아버지랑 고모도 코피가 잦으셨어요. 고모는 폐에 뭐가 있다고 들었던 것 같은데….' },
-      { q:'흡연력이 있으신가요?',
-        a:'담배는 한 번도 안 피웠습니다.' },
-    ],
-    orders:[
-      { key:'cxr', label:'흉부 X-ray (PA)', ready:true },
-      { key:'ct',  label:'흉부 CT',         ready:false },
-      { key:'mri', label:'뇌 MRI',          ready:false },
-    ],
-    study:{ name:'흉부 X-ray PA', acc:'DEMO-2026-0917', approved:'2026-09-02' },
-    findings:[
-      { id:'f1', text:'우하폐야에 경계가 뚜렷한 결절, 굵은 혈관 음영이 이어짐', correct:true },
-      { id:'f2', text:'양측 폐야 미만성 간질성 음영', correct:false },
-      { id:'f3', text:'좌측 늑골횡격막각 둔화', correct:false },
-      { id:'f4', text:'우측 폐첨부 공동성 병변', correct:false },
-    ],
-    diagnoses:[
-      { id:'d1', text:'폐동정맥기형 (PAVM)', correct:true },
-      { id:'d2', text:'폐결핵',             correct:false },
-      { id:'d3', text:'폐선암',             correct:false },
-      { id:'d4', text:'기관지확장증',        correct:false },
-    ],
-    answer:'폐동정맥기형 (PAVM)',
-    feedback:[
-      { t:'**결절과 이어지는 굵은 혈관 음영**이 핵심 소견입니다. 공급동맥과 유출정맥이 함께 보이면 단순 결절이 아니라 혈관 병변을 먼저 의심합니다.',
-        cite:'흉부영상의학 §7.4' },
-      { t:'문진에서 **반복 비출혈**과 **가족력**이 확인됐습니다. 유전출혈모세혈관확장증(HHT) 진단 기준에 해당하며, PAVM은 HHT에 흔히 동반됩니다.',
-        cite:'Curaçao 기준' },
-    ],
-    missed:{
-      h:'놓치기 쉬운 지점',
-      t:'SpO₂ 91%는 우좌단락을 시사합니다. PAVM은 폐 모세혈관을 우회시켜 역설색전과 뇌농양 위험을 높이므로, 확진 전이라도 뇌 영상 검사를 함께 고려합니다.',
-    },
-  },
-  {
-    id:'RC-021', who:'58세 여성', cc:'발열 · 화농성 객담',
-    rarity:'common', active:false, film:null,
-  },
-  {
-    id:'RC-033', who:'34세 남성', cc:'갑작스런 흉통 · 호흡곤란',
-    rarity:'common', active:true, film:'ptx',
-    intro:'두 시간 전 갑자기 시작된 오른쪽 흉통으로 내원했습니다.',
-    vitals:[['SpO₂','94 %',false],['BP','126/78',false],['HR','104 /min',true],['RR','24 /min',true]],
-    questions:[
-      { q:'언제부터 아프기 시작했나요?',
-        a:'두 시간쯤 전에요. 가만히 앉아 있다가 갑자기 오른쪽 가슴이 찌르듯 아팠어요.' },
-      { q:'숨 쉴 때 더 아픈가요?',
-        a:'네, 크게 들이쉬면 확 아파요. 숨도 좀 차고요.' },
-      { q:'키와 체중이 어떻게 되나요?',
-        a:'187cm에 62kg입니다. 원래 마른 편이에요.' },
-      { q:'흡연력이 있으신가요?',
-        a:'하루 반 갑 정도 피웁니다.' },
-    ],
-    orders:[
-      { key:'cxr', label:'흉부 X-ray (PA)', ready:true },
-      { key:'ct',  label:'흉부 CT',         ready:false },
-      { key:'ecg', label:'심전도',           ready:false },
-    ],
-    study:{ name:'흉부 X-ray PA', acc:'DEMO-2026-0918', approved:'2026-09-03' },
-    findings:[
-      { id:'f1', text:'우측 폐첨부에 흉막선, 그 바깥으로 폐혈관 음영 소실', correct:true },
-      { id:'f2', text:'우하폐야 경계가 뚜렷한 결절', correct:false },
-      { id:'f3', text:'양측 폐문 림프절 종대', correct:false },
-      { id:'f4', text:'좌측 대량 흉수', correct:false },
-    ],
-    diagnoses:[
-      { id:'d1', text:'원발성 자연기흉', correct:true },
-      { id:'d2', text:'폐색전증',       correct:false },
-      { id:'d3', text:'심근경색',       correct:false },
-      { id:'d4', text:'늑막염',         correct:false },
-    ],
-    answer:'원발성 자연기흉',
-    feedback:[
-      { t:'**흉막선(pleural line)과 그 바깥의 폐혈관 음영 소실**이 진단적입니다. 흉막선 안쪽으로만 혈관 음영이 보이는지 반드시 확인하세요.',
-        cite:'흉부영상의학 §4.2' },
-      { t:'**키 크고 마른 젊은 남성 흡연자**는 원발성 자연기흉의 전형적 위험군입니다. 187cm·62kg, 흡연력이 모두 일치합니다.',
-        cite:'BTS 흉막질환 지침' },
-    ],
-    missed:{
-      h:'먼저 배제할 것',
-      t:'긴장성 기흉은 응급입니다. 기관 편위, 저혈압, 경정맥 확장이 있으면 영상 확인을 기다리지 않고 즉시 감압합니다. 이 환자는 혈압이 유지되고 기관 편위가 없어 해당하지 않습니다.',
-    },
-  },
-  {
-    id:'RC-047', who:'27세 여성', cc:'건강검진',
-    rarity:'normal', active:false, film:null,
-  },
-];
+const { visible: CASES, hidden: HIDDEN_CASES } =
+  window.RareCaseSchema.partitionCases(window.RARECASE_CASES);
+
+// 승인됐는데 형식이 깨진 케이스는 데이터 오류다. 초안(draft)은 정상적인 숨김.
+HIDDEN_CASES.filter(h=>h.reason==='invalid').forEach(h=>
+  console.warn('[RareCase] 승인 케이스 형식 오류로 숨김:', h.id, h.errors));
 
 /* ═══════════════════════════════════════════════════════════
    영상 플레이스홀더
@@ -689,13 +629,14 @@ function rich(s){
 /* ═══════════════════════════════════════════════════════════ */
 
 function App(){
-  const [caseId, setCaseId] = useState('RC-014');
+  const [caseId, setCaseId] = useState(CASES[0].id);
   const [asked,  setAsked]  = useState([]);
   const [typing, setTyping] = useState(false);
   const [phase,  setPhase]  = useState('idle');   // idle | scanning | film
   const [finding, setFinding] = useState(null);
   const [dx, setDx] = useState(null);
-  const [graded, setGraded] = useState(false);
+  const [result, setResult] = useState(null);   // gradeAttempt() 결과, 제출 전 null
+  const graded = result !== null;
   const chatEnd = useRef(null);
   const timers = useRef([]);
 
@@ -710,7 +651,7 @@ function App(){
   const newSession = (id)=>{
     clearAll();
     setCaseId(id); setAsked([]); setTyping(false);
-    setPhase('idle'); setFinding(null); setDx(null); setGraded(false);
+    setPhase('idle'); setFinding(null); setDx(null); setResult(null);
   };
 
   const ask = (item)=>{
@@ -730,9 +671,31 @@ function App(){
   };
 
   const canSubmit = finding && dx && !graded;
-  const correct = graded
-    && cur.findings.find(f=>f.id===finding)?.correct
-    && cur.diagnoses.find(d=>d.id===dx)?.correct;
+
+  // 제출 순간의 선택·문진으로 채점하고 고정한다 (제출 뒤 질문을 더 해도 결과는 그대로)
+  const submit = ()=>{
+    if(!canSubmit) return;
+    setResult(window.RareCaseGrading.gradeAttempt(cur, {
+      finding, dx, asked: asked.map(m=>m.q),
+    }));
+  };
+
+  // 판독 중 키보드: 1–4 소견, A–D 진단, Enter 제출
+  useEffect(()=>{
+    if(phase!=='film' || graded) return;
+    const onKey = (e)=>{
+      const act = window.RareCaseGrading.keyToAction(e, cur.findings.length, cur.diagnoses.length);
+      if(!act) return;
+      // 선택지가 아닌 버튼(케이스·처음부터·질문 등)에 포커스가 있으면 Enter는 그 버튼 몫
+      if(act.type==='submit' && e.target.closest?.('button:not(.opt)')) return;
+      e.preventDefault();
+      if(act.type==='finding') setFinding(cur.findings[act.index].id);
+      if(act.type==='dx') setDx(cur.diagnoses[act.index].id);
+      if(act.type==='submit') submit();
+    };
+    window.addEventListener('keydown', onKey);
+    return ()=>window.removeEventListener('keydown', onKey);
+  });
 
   const resOf = (list, picked, id)=>{
     if(!graded) return undefined;
@@ -757,7 +720,7 @@ function App(){
           <span>희귀 1 : 흔함 2 : 정상 1</span>
         </div>
         <div className="spacer"/>
-        <button className="reset" onClick={()=>newSession('RC-014')}>처음부터</button>
+        <button className="reset" onClick={()=>newSession(CASES[0].id)}>처음부터</button>
       </header>
 
       <main className="console">
@@ -770,15 +733,13 @@ function App(){
               {CASES.map(c=>(
                 <button key={c.id} className="case"
                         data-sel={c.id===caseId?'1':'0'}
-                        disabled={!c.active}
-                        onClick={()=>c.active && newSession(c.id)}>
+                        onClick={()=>newSession(c.id)}>
                   <span className="case-id">{c.id}</span>
                   <span className="case-who">{c.who}</span>
                   <span className="case-cc">{c.cc}</span>
                   <span className={'tag ' + c.rarity}>
                     {c.rarity==='rare'?'희귀':c.rarity==='common'?'흔함':'정상'}
                   </span>
-                  {!c.active && <span className="tag scope">데모 범위 밖</span>}
                 </button>
               ))}
             </div>
@@ -842,7 +803,8 @@ function App(){
         <section className="pane viewer-pane">
           <div className="pane-hd">
             영상 뷰어
-            <span style={{marginLeft:'auto',color:'var(--ok)'}}>● 전문가 승인됨</span>
+            <span style={{marginLeft:'auto',color:'var(--ok)'}}
+                  title={'승인: ' + cur.approval.by}>● 승인됨 · 데모 가정</span>
           </div>
 
           <div className="viewer">
@@ -869,8 +831,8 @@ function App(){
             <div className="study-line">
               <span><b>STUDY</b> {cur.study.name}</span>
               <span><b>ACC</b> {cur.study.acc}</span>
-              <span><b>승인</b> {cur.study.approved}</span>
-              <span><b>출처</b> 생성 · 검증 · 승인 완료</span>
+              <span><b>승인</b> {cur.approval.date}</span>
+              <span><b>승인자</b> {cur.approval.by}</span>
             </div>
           )}
 
@@ -898,22 +860,29 @@ function App(){
                 </div>
 
                 <button className="submit" disabled={!canSubmit}
-                        onClick={()=>setGraded(true)}>
+                        onClick={submit}>
                   판독 제출
                 </button>
+                <div className="kbd-hint">키보드 · 1–{cur.findings.length} 소견 · A–{String.fromCharCode(64+cur.diagnoses.length)} 진단 · Enter 제출</div>
               </React.Fragment>
             )}
 
             {graded && (
               <React.Fragment>
-                <div className="verdict"
-                     style={correct?null:{borderColor:'var(--bad)',background:'#1A0F0E'}}>
-                  <span className="mark"
-                        style={correct?null:{borderColor:'var(--bad)',color:'var(--bad)'}}>
-                    {correct?'✓':'✕'}
+                <div className="verdict" data-v={result.verdict}>
+                  <span className="mark">
+                    {result.verdict==='correct'?'✓':result.verdict==='partial'?'△':'✕'}
                   </span>
                   <div>
-                    <b>{correct ? '정답 · ' + cur.answer : '오답 · 정답은 ' + cur.answer}</b>
+                    <b>
+                      {result.verdict==='correct' && '정답 · ' + cur.answer}
+                      {result.verdict==='partial' && '부분 정답 · 정답은 ' + cur.answer}
+                      {result.verdict==='wrong' && '오답 · 정답은 ' + cur.answer}
+                    </b>
+                    <p className="score-line">
+                      <span data-ok={result.findingOk?'1':'0'}>소견 {result.findingOk?'맞음':'틀림'}</span>
+                      <span data-ok={result.dxOk?'1':'0'}>진단 {result.dxOk?'맞음':'틀림'}</span>
+                    </p>
                     <p>사전에 확정된 케이스 정답과 대조한 결과입니다. 시스템은 영상을 판독하지 않습니다.</p>
                   </div>
                 </div>
@@ -928,10 +897,39 @@ function App(){
                   ))}
                 </div>
 
+                <div className="sect-label">추정 진단</div>
+                <div className="opts">
+                  {cur.diagnoses.map((d,i)=>(
+                    <button key={d.id} className="opt" disabled
+                            data-res={resOf(cur.diagnoses, dx, d.id)}>
+                      <span className="key">{String.fromCharCode(65+i)}</span>{d.text}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="sect-label">문진</div>
+                {result.missedKeyQuestions.length > 0 ? (
+                  <div className="history" data-missed="1">
+                    <h4>근거에 쓰인 문진 중 묻지 않은 질문</h4>
+                    <ul>{result.missedKeyQuestions.map(q=><li key={q}>{q}</li>)}</ul>
+                  </div>
+                ) : (
+                  <div className="history">
+                    <h4>근거에 쓰인 문진을 모두 확인했습니다</h4>
+                  </div>
+                )}
+
                 <div className="sect-label">근거</div>
+                {!cur.medicalReviewed && (
+                  <div className="review-note">
+                    확인 필요 · 이 케이스의 소견·진단 기준·근거 문장은 아직 원문과 대조하지 않았습니다.
+                  </div>
+                )}
                 <div className="fb">
                   {cur.feedback.map((p,i)=>(
-                    <p key={i}>{rich(p.t)}<span className="cite">{p.cite}</span></p>
+                    <p key={i}>{rich(p.t)}<span className="cite">{p.cite.text}</span>
+                      {!p.cite.verified && <span className="unverified">확인 필요</span>}
+                    </p>
                   ))}
                   <div className="missed">
                     <h4>{cur.missed.h}</h4>
@@ -945,17 +943,29 @@ function App(){
       </main>
 
       <footer className="statusbar">
-        <span className="st"><i className="dot"/>전문가 승인된 영상만 노출</span>
+        <span className="st"><i className="dot"/>승인된 케이스만 노출</span>
+        {HIDDEN_CASES.length > 0 && (
+          <span className="st" title={HIDDEN_CASES.map(h=>h.id).join(', ')}>
+            <b>{HIDDEN_CASES.length}</b>건 미승인·숨김
+          </span>
+        )}
         <span className="st"><i className="dot"/>판단은 <b>학습자</b>가 합니다</span>
         <span className="st warn"><i className="dot"/>데모 · 가상 환자 · 실제 의료영상 아님</span>
         <span className="spacer"/>
-        <span className="st" style={{color:'var(--text-faint)'}}>조회 기록 저장됨</span>
+        <span className="st" style={{color:'var(--text-faint)'}}>풀이 기록 저장 안 함</span>
       </footer>
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+function Root(){
+  if(CASES.length === 0){
+    return <div className="empty">노출 가능한 승인 케이스가 없습니다.</div>;
+  }
+  return <App/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
 </script>
 
 </body>
