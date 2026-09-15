@@ -2,43 +2,68 @@
 
 희귀 소견 판독 연습 콘솔. 가상 환자를 문진하고 검사를 오더한 뒤 영상을 판독해 소견·진단을 고르면, **미리 확정되고 승인된 정답과 근거**로 채점한다.
 
-> ⚠️ 교육용 프로토타입이다. 영상은 코드로 그린 도식 플레이스홀더이며 실제 의료영상이 아니다. 의학 내용(소견·진단 기준·인용)은 아직 원문 대조 전이라 화면에 "확인 필요"로 표시된다. 진단에 쓰면 안 된다.
+> ⚠️ 교육용 프로토타입이다. 지금 화면의 영상은 코드로 그린 도식 플레이스홀더이며 실제 의료영상이 아니다. 의학 내용(소견·진단 기준·인용)은 아직 원문 대조 전이라 화면에 "확인 필요"로 표시된다. 진단에 쓰면 안 된다.
 
 ## 실행
 
-빌드가 필요 없다. 로컬 서버로 연다.
+Node 22.12 이상.
 
 ```bash
-python -m http.server 8765 --bind 127.0.0.1
+npm install
 ```
 
-브라우저에서 http://localhost:8765 을 연다.
+개발 (Vite 개발 서버 + API, http://127.0.0.1:5173):
+
+```bash
+npm run dev
+```
+
+배포 모드 (빌드 결과물 + API + 영상을 한 서버로, http://127.0.0.1:8787):
+
+```bash
+npm run build
+```
+
+```bash
+npm start
+```
+
+영상 데이터 폴더는 저장소 밖이어야 한다. 기본값 `C:\rarecase-data`, 바꾸려면 환경변수 `RARECASE_DATA`.
 
 ## 검사
 
 ```bash
-node tools/check-cases.js
+npm test
 ```
 
-케이스 스키마, 원본 데모와의 내용 대조, 깨진 케이스 숨김, 채점 조합, 키보드 매핑을 검사한다.
+| 스크립트 | 검사 |
+|---|---|
+| `tools/check-cases.cjs` | 케이스 스키마, 원본 데모와 내용 대조, 깨진 케이스 숨김, 채점 조합, 키보드 |
+| `tools/test-server.js` | 미승인 케이스가 응답에 없음, 노출 허용 데이터셋만, 경로 탈출 차단, 저장소 안 데이터 폴더 거부 |
+| `tools/test-nih-extract.cjs` | NIH 압축 스트리밍 추출 |
+| `tools/test-rsna-truth.cjs` | RSNA 정답 규칙 v1과 실제 정답 목록 불변 조건 |
 
 ## 구조
 
-| 파일 | 역할 |
+| 경로 | 역할 |
 |---|---|
-| `index.html` | 화면 (React 18 UMD + Babel standalone) |
-| `cases.js` | 케이스 데이터 |
-| `case-schema.js` | 노출 판정: 승인됐고 형식이 온전한 케이스만 |
-| `grading.js` | 채점: 확정 정답과 대조, 부분 정답, 핵심 문진 누락, 키 입력 |
-| `tools/check-cases.js` | 검사 스크립트 |
+| `index.html`, `src/main.jsx`, `src/App.jsx`, `src/styles.css` | 화면 (React 18, Vite) |
+| `src/lib/cases.js` | 데모 케이스 데이터 |
+| `src/lib/case-schema.js` | 노출 판정: 승인됐고 형식이 온전한 케이스만 |
+| `src/lib/grading.js` | 채점: 확정 정답과 대조, 부분 정답, 핵심 문진 누락, 키 입력 |
+| `server/app.js` | `/api/cases`, `/data/<dataset>/*.png`, 배포 모드 정적 파일 |
+| `server/index.js` | 배포 모드 서버 |
+| `data/manifest/` | 공개 데이터셋 매니페스트 (해시·라벨·메타데이터만, 영상 없음) |
+| `tools/` | 데이터 수집·검사 스크립트 |
+| `docs/data-plan.md` | 데이터셋 라이선스 조사, 정답 규칙, 진행 기록 |
 | `docs/original-demo.html` | 출발점 데모 원본 (수정하지 않음) |
+| `docs/legacy-index.html` | Vite 이전 단일 파일 버전 |
 
 ## 설계 원칙
 
-1. 케이스 우선: 정답 소견을 먼저 정의하고 그 소견으로 영상을 만든다.
-2. 시스템은 영상을 판독하지 않는다. 채점은 확정 정답과의 대조뿐이다.
-3. 합성 영상 표시(SYNTHETIC·워터마크·진단 사용 금지)를 유지한다.
-4. 전문가 승인된 케이스만 학습자에게 노출한다.
-5. 희귀 케이스만 연속으로 내지 않고 흔함·정상과 섞는다.
-6. 확인되지 않은 의학 내용은 "확인 필요"로 표시한다.
-7. 실제 환자 정보·실제 의료영상은 저장소에 넣지 않는다.
+`CLAUDE.md` 참고. 요약: 케이스 우선, 시스템은 영상을 판독하지 않음, 영상 출처 표시 유지, 정답은 영상의학과 판독 라벨만, 확인 안 된 의학 내용은 "확인 필요", 실제 영상은 저장소 밖, 라이선스가 허용한 데이터만 노출, 재식별 금지.
+
+## 데이터 출처
+
+- RSNA Pneumonia Detection Challenge 2018 — https://www.rsna.org/rsnai/ai-image-challenge/rsna-pneumonia-detection-challenge-2018 · Shih G, et al. Radiology: AI 2019. https://doi.org/10.1148/ryai.2019180041
+- NIH ChestX-ray14 — https://nihcc.app.box.com/v/ChestXray-NIHCC · Wang X, et al. ChestX-ray8. IEEE CVPR 2017, pp. 3462-3471 · NIH Clinical Center is the data provider

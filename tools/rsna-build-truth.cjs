@@ -1,6 +1,6 @@
 // RSNA Pneumonia 2018 라벨에서 RareCase 정답 목록을 만든다. 영상은 읽지 않는다 (원칙 2).
 //
-// 실행: node tools/rsna-build-truth.js [--rsna C:\rarecase-data\rsna-pneumonia\labels] [--nih C:\rarecase-data\nih-cxr14\meta]
+// 실행: node tools/rsna-build-truth.cjs [--rsna C:\rarecase-data\rsna-pneumonia\labels] [--nih C:\rarecase-data\nih-cxr14\meta]
 // 결과: data/manifest/rsna-truth.json (정답·박스·메타데이터·제외 사유, 규칙 설명 포함)
 //
 // 정답 규칙 v1 (2026-09-15 사용자 확정, docs/data-plan.md)

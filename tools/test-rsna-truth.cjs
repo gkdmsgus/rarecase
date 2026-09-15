@@ -1,10 +1,10 @@
-// rsna-build-truth.js 시험. 실행: node tools/test-rsna-truth.js
+// rsna-build-truth.cjs 시험. 실행: node tools/test-rsna-truth.cjs
 // 1) 가짜 주석으로 규칙 분기 하나하나  2) 실제 data/manifest/rsna-truth.json 불변 조건
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { buildTruth, adjudicatedCategory, RULE_VERSION } = require('./rsna-build-truth.js');
+const { buildTruth, adjudicatedCategory, RULE_VERSION } = require('./rsna-build-truth.cjs');
 
 let passed = 0;
 const test = (name, fn) => {

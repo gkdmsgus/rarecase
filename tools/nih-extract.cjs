@@ -1,7 +1,7 @@
 // NIH ChestX-ray14 영상 압축을 받으면서 필요한 PNG만 저장한다 (전체 41.98 GB를 디스크에 두지 않음).
 //
 // 실행:
-//   node tools/nih-extract.js --targets <영상 이름 목록.txt> [--out C:\rarecase-data\nih-cxr14] [--archives 1-12]
+//   node tools/nih-extract.cjs --targets <영상 이름 목록.txt> [--out C:\rarecase-data\nih-cxr14] [--archives 1-12]
 //
 // 결과 (모두 --out 아래, 저장소 밖):
 //   images/<이름>.png            목록에 있는 영상만

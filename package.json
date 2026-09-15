@@ -1,0 +1,24 @@
+{
+  "name": "rarecase",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Rare-finding reading practice console (education prototype)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "node tools/check-cases.cjs && node tools/test-server.js && node tools/test-nih-extract.cjs && node tools/test-rsna-truth.cjs"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.3.0"
+  }
+}

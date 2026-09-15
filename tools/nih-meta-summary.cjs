@@ -1,5 +1,5 @@
 // NIH ChestX-ray14 메타데이터 요약 + 매니페스트 기록.
-// 실행: node tools/nih-meta-summary.js [데이터 폴더, 기본 C:\rarecase-data\nih-cxr14\meta]
+// 실행: node tools/nih-meta-summary.cjs [데이터 폴더, 기본 C:\rarecase-data\nih-cxr14\meta]
 // 영상은 읽지 않는다. 결과는 data/manifest/nih-cxr14-meta.json (저장소에 커밋 가능한 해시·개수만).
 'use strict';
 const fs = require('fs');

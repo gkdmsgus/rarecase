@@ -1,5 +1,5 @@
 // nih-extract.js 시험. 실제 영상 없이 가짜 파일로 만든 tar.gz를 file:// 로 흘려 넣는다.
-// 실행: node tools/test-nih-extract.js
+// 실행: node tools/test-nih-extract.cjs
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -7,9 +7,9 @@ const path = require('path');
 const crypto = require('crypto');
 const assert = require('assert');
 const { execFileSync, spawnSync } = require('child_process');
-const { assertOutsideRepo, readTargets, parseRange } = require('./nih-extract.js');
+const { assertOutsideRepo, readTargets, parseRange } = require('./nih-extract.cjs');
 
-const SCRIPT = path.join(__dirname, 'nih-extract.js');
+const SCRIPT = path.join(__dirname, 'nih-extract.cjs');
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'rc-extract-test-'));
 let passed = 0;
 const test = (name, fn) => {

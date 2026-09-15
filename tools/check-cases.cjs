@@ -1,4 +1,4 @@
-// 케이스 데이터·스키마 검사. 실행: node tools/check-cases.js
+// 케이스 데이터·스키마 검사. 실행: node tools/check-cases.cjs
 // 1) 실제 데이터의 노출/숨김 결과
 // 2) 원본 데모(docs/original-demo.html)에서 내용이 빠지거나 바뀌지 않았는지
 // 3) 깨진 케이스가 실제로 숨겨지는지 (실패 모드)
@@ -8,8 +8,10 @@ const path = require('path');
 const assert = require('assert');
 
 const ROOT = path.join(__dirname, '..');
-const { partitionCases, validateCase } = require(path.join(ROOT, 'case-schema.js'));
-const CASES = require(path.join(ROOT, 'cases.js'));
+const LIB = path.join(ROOT, 'src', 'lib');
+// src/lib는 ES 모듈. Node 22.12+의 require(esm)으로 같은 파일을 읽는다
+const { partitionCases, validateCase } = require(path.join(LIB, 'case-schema.js'));
+const CASES = require(path.join(LIB, 'cases.js')).default;
 
 let passed = 0;
 const test = (name, fn) => {
@@ -103,7 +105,7 @@ test('hidden when question key is not boolean', () => {
 });
 
 // ── 4. 채점 (2단계) ─────────────────────────────────────────
-const { gradeAttempt, keyToAction } = require(path.join(ROOT, 'grading.js'));
+const { gradeAttempt, keyToAction } = require(path.join(LIB, 'grading.js'));
 
 // 핵심 문진은 근거 문장에 실제로 등장하는 질문만이어야 한다 (새 의학 내용 금지)
 test('key questions per case match feedback-referenced history', () => {

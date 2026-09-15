@@ -1,11 +1,11 @@
 // 원격 zip의 끝부분(중앙 디렉터리)만 범위 요청으로 받아 파일 목록을 본다. 전체를 받지 않는다.
-// 실행: node tools/zip-remote-list.js <url> [tailMB=64]
+// 실행: node tools/zip-remote-list.cjs <url> [tailMB=64]
 'use strict';
 const { execFileSync } = require('child_process');
 
 const url = process.argv[2];
 const tailMB = Number(process.argv[3] || 64);
-if (!url) { console.error('usage: node tools/zip-remote-list.js <url> [tailMB]'); process.exit(1); }
+if (!url) { console.error('usage: node tools/zip-remote-list.cjs <url> [tailMB]'); process.exit(1); }
 
 const range = (spec) => execFileSync('curl.exe', ['-sL', '--fail', '-r', spec, url], { maxBuffer: 1024 * 1024 * 1024 });
 const head = execFileSync('curl.exe', ['-sIL', url]).toString();
