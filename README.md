@@ -30,6 +30,8 @@ npm start
 
 영상 데이터 폴더는 저장소 밖이어야 한다. 기본값 `C:\rarecase-data`, 바꾸려면 환경변수 `RARECASE_DATA`.
 
+선택지 id와 순서는 비밀값으로 정한다. `RARECASE_SECRET`(16자 이상)을 정하면 재시작해도 같고, 정하지 않으면 서버를 켤 때마다 바뀐다.
+
 ## 검사
 
 ```bash
@@ -39,7 +41,7 @@ npm test
 | 스크립트 | 검사 |
 |---|---|
 | `tools/check-cases.cjs` | 케이스 스키마, 원본 데모와 내용 대조, 깨진 케이스 숨김, 채점 조합, 키보드 |
-| `tools/test-server.js` | 미승인 케이스가 응답에 없음, 노출 허용 데이터셋만, 경로 탈출 차단, 저장소 안 데이터 폴더 거부 |
+| `tools/test-server.js` | 미승인 케이스가 응답에 없음, 채점 전 정답 비노출, 서버 채점이 모든 조합에서 원래 채점과 같음, 잘못된 채점 요청 거부, 노출 허용 데이터셋만, 경로 탈출 차단 |
 | `tools/test-nih-extract.cjs` | NIH 압축 스트리밍 추출 |
 | `tools/test-rsna-truth.cjs` | RSNA 정답 규칙 v1과 실제 정답 목록 불변 조건 |
 
@@ -51,7 +53,8 @@ npm test
 | `src/lib/cases.js` | 데모 케이스 데이터 |
 | `src/lib/case-schema.js` | 노출 판정: 승인됐고 형식이 온전한 케이스만 |
 | `src/lib/grading.js` | 채점: 확정 정답과 대조, 부분 정답, 핵심 문진 누락, 키 입력 |
-| `server/app.js` | `/api/cases`, `/data/<dataset>/*.png`, 배포 모드 정적 파일 |
+| `server/app.js` | `/api/cases`, `POST /api/grade`, `/data/<dataset>/*.png`, 배포 모드 정적 파일 |
+| `server/public-case.js` | 학습자용 케이스(정답·근거·핵심 문진 표시 제거, 선택지 id 불투명화·순서 섞기)와 서버 채점 |
 | `server/index.js` | 배포 모드 서버 |
 | `data/manifest/` | 공개 데이터셋 매니페스트 (해시·라벨·메타데이터만, 영상 없음) |
 | `tools/` | 데이터 수집·검사 스크립트 |

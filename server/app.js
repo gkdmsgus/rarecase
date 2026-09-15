@@ -1,14 +1,42 @@
 // RareCase 요청 처리. 개발 때는 Vite 서버 미들웨어로, 배포 때는 server/index.js가 그대로 쓴다.
 //
 //  GET /api/health                → { ok: true }
-//  GET /api/cases                 → 승인·형식 검사를 통과한 케이스만 + 숨긴 케이스 id·사유 (원칙 4)
-//  GET /data/<dataset>/<file>.png → 저장소 밖 DATA_ROOT의 영상. 노출 허용 데이터셋만 (원칙 7·8)
+//  GET  /api/cases                → 승인·형식 검사를 통과한 케이스만, 정답 정보를 뺀 형태 + 숨긴 케이스 id·사유 (원칙 4)
+//  POST /api/grade                → { caseId, finding, dx, asked } 를 서버에서 채점, 정답·근거는 이때만 보냄
+//  GET  /data/<dataset>/<file>.png → 저장소 밖 DATA_ROOT의 영상. 노출 허용 데이터셋만 (원칙 7·8)
 //  그 밖                           → 배포 모드면 dist 정적 파일, 없으면 next()
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import CASES from '../src/lib/cases.js';
 import { partitionCases } from '../src/lib/case-schema.js';
+import { createCaseBook } from './public-case.js';
+
+const MAX_BODY = 16 * 1024;
+
+function readJson(req) {
+  return new Promise((resolve) => {
+    const type = String(req.headers['content-type'] || '');
+    if (!/^application\/json\b/i.test(type)) return resolve({ status: 415, error: 'content-type must be application/json' });
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    req.on('data', (c) => {
+      if (done) return;
+      size += c.length;
+      if (size > MAX_BODY) { done = true; resolve({ status: 413, error: 'body too large' }); req.resume(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (done) return;
+      done = true;
+      try { resolve({ body: JSON.parse(Buffer.concat(chunks).toString('utf8')) }); }
+      catch { resolve({ status: 400, error: 'invalid json' }); }
+    });
+    req.on('error', () => { if (!done) { done = true; resolve({ status: 400, error: 'read error' }); } });
+  });
+}
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -34,18 +62,36 @@ function resolveInside(base, rel) {
   return full;
 }
 
-export function createHandler({ dataRoot = process.env.RARECASE_DATA || 'C:\\rarecase-data', distDir = null, cases = CASES, log = console } = {}) {
+export function createHandler({
+  dataRoot = process.env.RARECASE_DATA || 'C:\\rarecase-data',
+  distDir = null,
+  cases = CASES,
+  // 선택지 id·순서를 정하는 비밀값. 없으면 서버를 켤 때마다 새로 만듦(재시작하면 id가 바뀜)
+  secret = process.env.RARECASE_SECRET || crypto.randomBytes(24).toString('base64url'),
+  log = console,
+} = {}) {
   const resolvedData = path.resolve(dataRoot);
   const insideRepo = !path.relative(REPO, resolvedData).startsWith('..') && !path.isAbsolute(path.relative(REPO, resolvedData));
   if (insideRepo) throw new Error('DATA_ROOT must be outside the repository (principle 7): ' + resolvedData);
 
   const { visible, hidden } = partitionCases(cases);
   hidden.filter((h) => h.reason === 'invalid').forEach((h) => log.warn('[RareCase] approved case hidden for schema errors:', h.id, h.errors));
-  const casesBody = JSON.stringify({ cases: visible, hidden: hidden.map(({ id, reason }) => ({ id, reason })) });
+  const book = createCaseBook(visible, secret);
+  const casesBody = JSON.stringify({ cases: book.publicCases, hidden: hidden.map(({ id, reason }) => ({ id, reason })) });
 
   return function handle(req, res, next = () => json(res, 404, { error: 'not found' })) {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
+
+    if (p === '/api/grade') {
+      if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+      return readJson(req).then((r) => {
+        if (r.error) return json(res, r.status, { error: r.error });
+        const g = book.grade(r.body);
+        if (!g.ok) return json(res, g.status, { error: g.error });
+        return send(res, 200, JSON.stringify(g.result), 'application/json; charset=utf-8', { 'Cache-Control': 'no-store' });
+      });
+    }
 
     if (p.startsWith('/api/') || p.startsWith('/data/')) {
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'method not allowed' });

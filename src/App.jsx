@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { gradeAttempt, keyToAction } from './lib/grading.js';
+import { keyToAction } from './lib/grading.js';
 
 /* ═══════════════════════════════════════════════════════════
    케이스는 서버(/api/cases)가 준다. 서버가 case-schema.js로 걸러
@@ -214,10 +214,13 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
   const [phase,  setPhase]  = useState('idle');   // idle | scanning | film
   const [finding, setFinding] = useState(null);
   const [dx, setDx] = useState(null);
-  const [result, setResult] = useState(null);   // gradeAttempt() 결과, 제출 전 null
+  const [result, setResult] = useState(null);   // 서버 채점 결과(/api/grade), 제출 전 null
+  const [pending, setPending] = useState(false);
+  const [gradeError, setGradeError] = useState(null);
   const graded = result !== null;
   const chatEnd = useRef(null);
   const timers = useRef([]);
+  const attempt = useRef(0);   // 케이스를 바꾸면 늦게 온 채점 응답을 버리기 위한 번호
 
   const track = (id)=>{ timers.current.push(id); return id; };
   const clearAll = ()=>{ timers.current.forEach(clearTimeout); timers.current = []; };
@@ -231,6 +234,7 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
     clearAll();
     setCaseId(id); setAsked([]); setTyping(false);
     setPhase('idle'); setFinding(null); setDx(null); setResult(null);
+    setPending(false); setGradeError(null); attempt.current++;
   };
 
   const ask = (item)=>{
@@ -249,14 +253,29 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
     track(setTimeout(()=>setPhase('film'), 1500));
   };
 
-  const canSubmit = finding && dx && !graded;
+  const canSubmit = finding && dx && !graded && !pending;
 
-  // 제출 순간의 선택·문진으로 채점하고 고정한다 (제출 뒤 질문을 더 해도 결과는 그대로)
-  const submit = ()=>{
+  // 제출 순간의 선택·문진을 서버로 보내 채점하고 고정한다 (제출 뒤 질문을 더 해도 결과는 그대로)
+  // 정답·근거는 이 응답에서 처음 받는다
+  const submit = async ()=>{
     if(!canSubmit) return;
-    setResult(gradeAttempt(cur, {
-      finding, dx, asked: asked.map(m=>m.q),
-    }));
+    const my = ++attempt.current;
+    setPending(true); setGradeError(null);
+    try{
+      const r = await fetch('/api/grade', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ caseId: cur.id, finding, dx, asked: asked.map(m=>m.q) }),
+      });
+      const body = await r.json().catch(()=>({}));
+      if(my !== attempt.current) return;
+      if(!r.ok) throw new Error(body.error || 'HTTP ' + r.status);
+      setResult(body);
+    }catch(e){
+      if(my === attempt.current) setGradeError(e.message);
+    }finally{
+      if(my === attempt.current) setPending(false);
+    }
   };
 
   // 판독 중 키보드: 1–4 소견, A–D 진단, Enter 제출
@@ -276,10 +295,9 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
     return ()=>window.removeEventListener('keydown', onKey);
   });
 
-  const resOf = (list, picked, id)=>{
+  const resOf = (correctId, picked, id)=>{
     if(!graded) return undefined;
-    const it = list.find(x=>x.id===id);
-    if(it.correct) return 'ok';
+    if(id===correctId) return 'ok';
     return id===picked ? 'miss' : undefined;
   };
 
@@ -440,8 +458,13 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
 
                 <button className="submit" disabled={!canSubmit}
                         onClick={submit}>
-                  판독 제출
+                  {pending ? '채점 중…' : '판독 제출'}
                 </button>
+                {gradeError && (
+                  <div className="review-note" role="alert">
+                    채점하지 못했습니다 ({gradeError}). 다시 제출하거나 새로고침하세요.
+                  </div>
+                )}
                 <div className="kbd-hint">키보드 · 1–{cur.findings.length} 소견 · A–{String.fromCharCode(64+cur.diagnoses.length)} 진단 · Enter 제출</div>
               </React.Fragment>
             )}
@@ -454,9 +477,9 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
                   </span>
                   <div>
                     <b>
-                      {result.verdict==='correct' && '정답 · ' + cur.answer}
-                      {result.verdict==='partial' && '부분 정답 · 정답은 ' + cur.answer}
-                      {result.verdict==='wrong' && '오답 · 정답은 ' + cur.answer}
+                      {result.verdict==='correct' && '정답 · ' + result.answer}
+                      {result.verdict==='partial' && '부분 정답 · 정답은 ' + result.answer}
+                      {result.verdict==='wrong' && '오답 · 정답은 ' + result.answer}
                     </b>
                     <p className="score-line">
                       <span data-ok={result.findingOk?'1':'0'}>소견 {result.findingOk?'맞음':'틀림'}</span>
@@ -470,7 +493,7 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
                 <div className="opts">
                   {cur.findings.map((f,i)=>(
                     <button key={f.id} className="opt" disabled
-                            data-res={resOf(cur.findings, finding, f.id)}>
+                            data-res={resOf(result.correctFinding, finding, f.id)}>
                       <span className="key">{i+1}</span>{f.text}
                     </button>
                   ))}
@@ -480,7 +503,7 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
                 <div className="opts">
                   {cur.diagnoses.map((d,i)=>(
                     <button key={d.id} className="opt" disabled
-                            data-res={resOf(cur.diagnoses, dx, d.id)}>
+                            data-res={resOf(result.correctDx, dx, d.id)}>
                       <span className="key">{String.fromCharCode(65+i)}</span>{d.text}
                     </button>
                   ))}
@@ -499,20 +522,20 @@ function App({ cases: CASES, hidden: HIDDEN_CASES }){
                 )}
 
                 <div className="sect-label">근거</div>
-                {!cur.medicalReviewed && (
+                {!result.medicalReviewed && (
                   <div className="review-note">
                     확인 필요 · 이 케이스의 소견·진단 기준·근거 문장은 아직 원문과 대조하지 않았습니다.
                   </div>
                 )}
                 <div className="fb">
-                  {cur.feedback.map((p,i)=>(
+                  {result.feedback.map((p,i)=>(
                     <p key={i}>{rich(p.t)}<span className="cite">{p.cite.text}</span>
                       {!p.cite.verified && <span className="unverified">확인 필요</span>}
                     </p>
                   ))}
                   <div className="missed">
-                    <h4>{cur.missed.h}</h4>
-                    <p>{cur.missed.t}</p>
+                    <h4>{result.missed.h}</h4>
+                    <p>{result.missed.t}</p>
                   </div>
                 </div>
               </React.Fragment>

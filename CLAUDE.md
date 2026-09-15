@@ -4,7 +4,7 @@
 시작점은 단일 HTML 데모 `docs/original-demo.html`(2026-09-15 사용자가 전달, 원본은 수정하지 않는다). Vite 이전 단일 파일 버전은 `docs/legacy-index.html`.
 
 ## 지금 상태 (2026-09-15 기준)
-- 구조: React 18.3.1 + Vite 8, Node 서버(`server/app.js`)가 `/api/cases`와 저장소 밖 영상(`/data/<dataset>/*.png`)을 제공. 개발 `npm run dev`(5173), 배포 `npm run build` → `npm start`(8787), 검사 `npm test`
+- 구조: React 18.3.1 + Vite 8, Node 서버(`server/app.js`)가 `/api/cases`(정답 정보 뺀 케이스, 선택지 id 불투명·순서 섞음), `POST /api/grade`(서버 채점, 정답·근거는 이때만), 저장소 밖 영상(`/data/<dataset>/*.png`)을 제공. 비밀값 `RARECASE_SECRET`(없으면 서버 시작마다 새로 생성). 개발 `npm run dev`(5173), 배포 `npm run build` → `npm start`(8787), 검사 `npm test`
 - 화면 3단: 케이스 목록 → 환자·문진(질문 칩, 검사 오더) → 영상 뷰어·판독(소견·진단 선택 → 부분 정답 채점 → 근거·문진 누락·놓치기 쉬운 지점). 키보드 1–4/A–D/Enter
 - 화면 케이스는 아직 데모 2개(RC-014 PAVM, RC-033 기흉, `src/lib/cases.js`), 영상은 캔버스 **도식 플레이스홀더**. 미승인 RC-021·RC-047은 서버가 응답에서 뺌
 - 실제 데이터 준비 중: RSNA Pneumonia 2018 정답 목록 4,510장(`data/manifest/rsna-truth.json`, 규칙 `rsna-truth-v1`), 영상은 `C:\rarecase-data\rsna-pneumonia\`. 경위는 `docs/data-plan.md`
