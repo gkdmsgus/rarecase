@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RareCase 판독 콘솔</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+
+<style>
+  /* ── Reading-room console. Deliberately single-theme dark:
+     radiology is read in a darkened room, and the watermark needs
+     a constant ground so it films the same every take. ───────── */
+  :root{
+    --ink:        #080A0D;
+    --panel:      #11151A;
+    --panel-2:    #171C23;
+    --panel-3:    #1E242C;
+    --line:       #262E38;
+    --line-soft:  #1C232B;
+    --text:       #DCE3EB;
+    --text-dim:   #93A0AE;
+    --text-faint: #64717F;
+    --signal:     #6FC9CE;   /* measurement cyan */
+    --signal-dim: #2E5C61;
+    --caution:    #E0A03C;   /* watermark / warning amber */
+    --ok:         #67BE84;
+    --bad:        #DE6A60;
+    --rare:       #B98BD9;   /* rarity tag */
+
+    --f-sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    --r: 4px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--f-sans);
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  button{ font-family:inherit; font-size:inherit; color:inherit; cursor:pointer; }
+  button:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--signal); outline-offset:2px;
+  }
+
+  /* ── shell ─────────────────────────────────────────────── */
+  .app{
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    background:
+      radial-gradient(1200px 600px at 70% -10%, #0E1319 0%, transparent 70%),
+      var(--ink);
+  }
+
+  .topbar{
+    display:flex; align-items:center; gap:18px;
+    padding:10px 18px;
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+  }
+  .brand{ display:flex; align-items:baseline; gap:9px; }
+  .brand b{ font-weight:700; font-size:15px; letter-spacing:-.01em; }
+  .brand span{
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+    color:var(--text-faint); text-transform:uppercase;
+  }
+  .topbar .spacer{ flex:1; }
+
+  .mix{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--f-mono); font-size:11px; color:var(--text-dim);
+  }
+  .mix .bars{ display:flex; gap:3px; }
+  .mix i{ width:14px; height:5px; border-radius:1px; background:var(--panel-3); display:block; }
+  .mix i.on{ background:var(--rare); }
+  .mix i.com{ background:var(--signal-dim); }
+
+  .reset{
+    background:transparent; border:1px solid var(--line);
+    border-radius:var(--r); padding:5px 11px;
+    font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+    color:var(--text-dim);
+  }
+  .reset:hover{ border-color:var(--signal-dim); color:var(--signal); }
+
+  /* ── three-pane console ────────────────────────────────── */
+  .console{
+    flex:1;
+    display:grid;
+    grid-template-columns: 208px minmax(280px,340px) minmax(360px,1fr);
+    gap:1px;
+    background:var(--line-soft);
+    min-height:0;
+  }
+  .pane{ background:var(--panel); display:flex; flex-direction:column; min-height:0; min-width:0; }
+
+  .pane-hd{
+    display:flex; align-items:center; gap:8px;
+    padding:9px 13px;
+    border-bottom:1px solid var(--line-soft);
+    font-family:var(--f-mono); font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint);
+  }
+  .pane-bd{ padding:12px 13px; overflow-y:auto; flex:1; min-height:0; }
+
+  /* ── case rail ─────────────────────────────────────────── */
+  .caselist{ display:flex; flex-direction:column; gap:7px; }
+  .case{
+    text-align:left; width:100%;
+    background:var(--panel-2); border:1px solid var(--line-soft);
+    border-left:2px solid var(--line);
+    border-radius:0 var(--r) var(--r) 0;
+    padding:9px 10px;
+    display:flex; flex-direction:column; gap:5px;
+    transition:border-color .15s, background .15s;
+  }
+  .case:hover:not(:disabled){ background:var(--panel-3); }
+  .case[data-sel="1"]{ border-left-color:var(--signal); background:var(--panel-3); }
+  .case:disabled{ opacity:.42; cursor:not-allowed; }
+  .case-id{ font-family:var(--f-mono); font-size:10px; color:var(--text-faint); letter-spacing:.06em; }
+  .case-who{ font-size:13px; font-weight:600; letter-spacing:-.01em; }
+  .case-cc{ font-size:11.5px; color:var(--text-dim); }
+
+  .tag{
+    display:inline-block; align-self:flex-start;
+    font-family:var(--f-mono); font-size:9.5px; letter-spacing:.1em;
+    padding:1px 6px; border-radius:2px; border:1px solid;
+  }
+  .tag.rare{ color:var(--rare); border-color:#463159; background:#221830; }
+  .tag.common{ color:var(--signal); border-color:var(--signal-dim); background:#0F1E20; }
+  .tag.normal{ color:var(--text-faint); border-color:var(--line); background:var(--panel-2); }
+  .tag.scope{ color:var(--text-faint); border-color:var(--line); background:transparent; }
+
+  /* ── patient / interview ───────────────────────────────── */
+  .vitals{
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:1px; background:var(--line-soft);
+    border:1px solid var(--line-soft); border-radius:var(--r);
+    margin-bottom:12px;
+  }
+  .vital{ background:var(--panel-2); padding:6px 9px; }
+  .vital dt{
+    font-family:var(--f-mono); font-size:9.5px; letter-spacing:.1em;
+    color:var(--text-faint); text-transform:uppercase; margin:0 0 1px;
+  }
+  .vital dd{ margin:0; font-family:var(--f-mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .vital dd.flag{ color:var(--caution); }
+
+  .chat{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .msg{ max-width:92%; padding:7px 10px; border-radius:var(--r); font-size:12.5px; line-height:1.5; }
+  .msg.q{ align-self:flex-end; background:var(--panel-3); border:1px solid var(--line); }
+  .msg.a{ align-self:flex-start; background:#0F1A1B; border:1px solid var(--signal-dim); }
+  .msg .who{
+    display:block; font-family:var(--f-mono); font-size:9px; letter-spacing:.12em;
+    color:var(--text-faint); text-transform:uppercase; margin-bottom:2px;
+  }
+
+  .dots i{
+    display:inline-block; width:4px; height:4px; border-radius:50%;
+    background:var(--signal); margin-right:3px; opacity:.35;
+    animation:blink 1.05s infinite;
+  }
+  .dots i:nth-child(2){ animation-delay:.18s; }
+  .dots i:nth-child(3){ animation-delay:.36s; }
+  @keyframes blink{ 0%,60%,100%{opacity:.25} 30%{opacity:1} }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:14px; padding:5px 11px; font-size:12px; color:var(--text-dim);
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  .chip:hover:not(:disabled){ border-color:var(--signal-dim); color:var(--signal); background:#0F1A1B; }
+  .chip:disabled{ opacity:.3; cursor:not-allowed; }
+  .chip.used{ opacity:.32; }
+
+  .sect-label{
+    font-family:var(--f-mono); font-size:9.5px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--text-faint);
+    margin:16px 0 7px; display:flex; align-items:center; gap:7px;
+  }
+  .sect-label::after{ content:""; flex:1; height:1px; background:var(--line-soft); }
+
+  .orders{ display:flex; flex-wrap:wrap; gap:6px; }
+  .order{
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:var(--r); padding:6px 11px; font-size:12px;
+    font-family:var(--f-mono); letter-spacing:.02em; color:var(--text-dim);
+  }
+  .order:hover:not(:disabled){ border-color:var(--signal); color:var(--signal); }
+  .order:disabled{ opacity:.3; cursor:not-allowed; }
+
+  /* ── viewer ────────────────────────────────────────────── */
+  .viewer-pane{ background:var(--panel); }
+  .viewer{
+    position:relative; flex:1;
+    display:flex; align-items:center; justify-content:center;
+    background:#000; margin:12px 13px 0; border:1px solid var(--line);
+    border-radius:var(--r); overflow:hidden; min-height:270px;
+  }
+  .viewer canvas{ display:block; max-width:100%; max-height:52vh; height:auto; }
+
+  .idle{
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    color:var(--text-faint); font-family:var(--f-mono); font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+  .idle svg{ opacity:.4; }
+
+  .scanning{ position:absolute; inset:0; background:#000; }
+  .scanline{
+    position:absolute; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,transparent,var(--signal),transparent);
+    box-shadow:0 0 14px 3px rgba(111,201,206,.42);
+    animation:sweep 1.15s cubic-bezier(.45,0,.55,1) infinite;
+  }
+  @keyframes sweep{ 0%{top:2%} 50%{top:96%} 100%{top:2%} }
+  .scan-txt{
+    position:absolute; left:0; right:0; bottom:16px; text-align:center;
+    font-family:var(--f-mono); font-size:11px; letter-spacing:.18em;
+    color:var(--signal); text-transform:uppercase;
+  }
+
+  .film{ position:relative; animation:fadein .5s ease-out both; }
+  @keyframes fadein{ from{opacity:0; filter:blur(6px)} to{opacity:1; filter:none} }
+
+  /* watermark — must stay legible on camera */
+  .wm-diag{
+    position:absolute; inset:0; pointer-events:none;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .wm-diag span{
+    transform:rotate(-32deg);
+    font-family:var(--f-mono); font-weight:600;
+    font-size:clamp(11px,2.1vw,16px); letter-spacing:.16em;
+    color:rgba(224,160,60,.5);
+    text-shadow:0 0 10px rgba(0,0,0,.85);
+    white-space:nowrap; line-height:2.9; text-align:center;
+  }
+  .wm-bar{
+    position:absolute; left:0; right:0; bottom:0;
+    background:rgba(224,160,60,.14);
+    border-top:1px solid rgba(224,160,60,.5);
+    padding:5px 9px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+    color:var(--caution); text-transform:uppercase;
+  }
+  .wm-corner{
+    position:absolute; top:8px; left:8px;
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+    color:var(--caution); border:1px solid rgba(224,160,60,.55);
+    background:rgba(0,0,0,.6); padding:2px 7px; border-radius:2px;
+  }
+  .lat-mark{
+    position:absolute; top:8px; right:10px;
+    font-family:var(--f-mono); font-size:15px; font-weight:600;
+    color:rgba(220,227,235,.7);
+  }
+
+  .study-line{
+    display:flex; flex-wrap:wrap; gap:6px 16px;
+    padding:8px 13px 0;
+    font-family:var(--f-mono); font-size:10.5px; color:var(--text-faint);
+    font-variant-numeric:tabular-nums;
+  }
+  .study-line b{ color:var(--text-dim); font-weight:500; }
+
+  /* ── read-out ──────────────────────────────────────────── */
+  .readout{ padding:0 13px 13px; }
+  .opts{ display:flex; flex-direction:column; gap:5px; }
+  .opt{
+    display:flex; align-items:flex-start; gap:9px; text-align:left; width:100%;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:var(--r); padding:8px 10px; font-size:12.5px; line-height:1.45;
+    transition:border-color .15s, background .15s;
+  }
+  .opt:hover:not(:disabled){ border-color:var(--signal-dim); }
+  .opt[data-on="1"]{ border-color:var(--signal); background:#0F1A1B; }
+  .opt .key{
+    flex:none; width:17px; height:17px; margin-top:1px; border-radius:2px;
+    border:1px solid var(--line); background:var(--panel-3);
+    font-family:var(--f-mono); font-size:10px; line-height:15px; text-align:center;
+    color:var(--text-faint);
+  }
+  .opt[data-on="1"] .key{ border-color:var(--signal); color:var(--signal); }
+  .opt[data-res="ok"]{ border-color:var(--ok); background:#0E1A13; }
+  .opt[data-res="ok"] .key{ border-color:var(--ok); color:var(--ok); }
+  .opt[data-res="miss"]{ border-color:var(--bad); background:#1A0F0E; }
+  .opt[data-res="miss"] .key{ border-color:var(--bad); color:var(--bad); }
+  .opt:disabled{ cursor:default; }
+
+  .submit{
+    margin-top:10px; width:100%;
+    background:var(--signal); color:#06181A; border:none;
+    border-radius:var(--r); padding:9px; font-weight:600; font-size:13px;
+    letter-spacing:.02em;
+  }
+  .submit:disabled{ background:var(--panel-3); color:var(--text-faint); cursor:not-allowed; }
+  .submit:hover:not(:disabled){ background:#87D8DC; }
+
+  /* ── result ────────────────────────────────────────────── */
+  .verdict{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--ok); background:#0E1A13;
+    border-radius:var(--r); padding:10px 12px; margin-bottom:11px;
+  }
+  .verdict .mark{
+    flex:none; width:26px; height:26px; border-radius:50%;
+    border:1.5px solid var(--ok); color:var(--ok);
+    display:grid; place-items:center; font-size:14px;
+  }
+  .verdict b{ font-size:13.5px; }
+  .verdict p{ margin:1px 0 0; font-size:11.5px; color:var(--text-dim); }
+
+  .fb{ font-size:12.5px; line-height:1.65; color:var(--text-dim); }
+  .fb p{ margin:0 0 9px; }
+  .fb strong{ color:var(--text); font-weight:600; }
+  .cite{
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:var(--f-mono); font-size:9.5px; letter-spacing:.06em;
+    color:var(--signal); border:1px solid var(--signal-dim);
+    background:#0F1A1B; border-radius:2px; padding:0 5px; margin:0 1px;
+    vertical-align:1px; white-space:nowrap;
+  }
+  .missed{
+    border:1px solid #4A3A1C; background:#1A1408;
+    border-radius:var(--r); padding:9px 11px; margin-top:4px;
+  }
+  .missed h4{
+    margin:0 0 4px; font-family:var(--f-mono); font-size:9.5px;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--caution);
+  }
+  .missed p{ margin:0; font-size:12px; color:var(--text-dim); line-height:1.6; }
+
+  /* ── status bar ────────────────────────────────────────── */
+  .statusbar{
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    padding:7px 18px;
+    border-top:1px solid var(--line); background:var(--panel);
+    font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em;
+    color:var(--text-faint); text-transform:uppercase;
+  }
+  .st{ display:flex; align-items:center; gap:6px; }
+  .st .dot{ width:6px; height:6px; border-radius:50%; background:var(--ok); flex:none; }
+  .st.warn{ color:var(--caution); }
+  .st.warn .dot{ background:var(--caution); }
+  .statusbar .spacer{ flex:1; }
+  .st b{ color:var(--text-dim); font-weight:500; }
+
+  @media (max-width:900px){
+    .console{ grid-template-columns:1fr; }
+    .pane-bd{ max-height:none; }
+    .viewer canvas{ max-height:44vh; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+/* ═══════════════════════════════════════════════════════════
+   시드 데이터 — 실제 구현에서는 /cases 응답으로 대체된다.
+
+   케이스 우선(case-first) 원칙:
+   정답 소견을 먼저 정의하고 그 소견으로 영상을 생성한다.
+   여기 correct:true 필드가 ground truth이고, 영상은 그것을
+   그리도록 지시받는다. 반대 순서는 절대 금지 — 모델이 무엇을
+   그렸는지 아무도 모르는 상태가 되기 때문.
+   ═══════════════════════════════════════════════════════════ */
+
+const CASES = [
+  {
+    id:'RC-014', who:'22세 남성', cc:'6개월 반복 객혈',
+    rarity:'rare', active:true, film:'pavm',
+    intro:'6개월째 가래에 피가 섞여 나온다며 내원했습니다.',
+    vitals:[['SpO₂','91 %',true],['BP','118/74',false],['HR','78 /min',false],['BT','36.6 ℃',false]],
+    questions:[
+      { q:'객혈은 언제부터 있었나요?',
+        a:'여섯 달쯤 됐어요. 가래에 피가 섞여 나오는데, 요즘은 좀 더 자주 그럽니다.' },
+      { q:'코피가 자주 나는 편인가요?',
+        a:'네, 어릴 때부터요. 한 달에 두세 번은 그냥 앉아 있다가도 납니다.' },
+      { q:'가족 중에 비슷한 증상이 있나요?',
+        a:'아버지랑 고모도 코피가 잦으셨어요. 고모는 폐에 뭐가 있다고 들었던 것 같은데….' },
+      { q:'흡연력이 있으신가요?',
+        a:'담배는 한 번도 안 피웠습니다.' },
+    ],
+    orders:[
+      { key:'cxr', label:'흉부 X-ray (PA)', ready:true },
+      { key:'ct',  label:'흉부 CT',         ready:false },
+      { key:'mri', label:'뇌 MRI',          ready:false },
+    ],
+    study:{ name:'흉부 X-ray PA', acc:'DEMO-2026-0917', approved:'2026-09-02' },
+    findings:[
+      { id:'f1', text:'우하폐야에 경계가 뚜렷한 결절, 굵은 혈관 음영이 이어짐', correct:true },
+      { id:'f2', text:'양측 폐야 미만성 간질성 음영', correct:false },
+      { id:'f3', text:'좌측 늑골횡격막각 둔화', correct:false },
+      { id:'f4', text:'우측 폐첨부 공동성 병변', correct:false },
+    ],
+    diagnoses:[
+      { id:'d1', text:'폐동정맥기형 (PAVM)', correct:true },
+      { id:'d2', text:'폐결핵',             correct:false },
+      { id:'d3', text:'폐선암',             correct:false },
+      { id:'d4', text:'기관지확장증',        correct:false },
+    ],
+    answer:'폐동정맥기형 (PAVM)',
+    feedback:[
+      { t:'**결절과 이어지는 굵은 혈관 음영**이 핵심 소견입니다. 공급동맥과 유출정맥이 함께 보이면 단순 결절이 아니라 혈관 병변을 먼저 의심합니다.',
+        cite:'흉부영상의학 §7.4' },
+      { t:'문진에서 **반복 비출혈**과 **가족력**이 확인됐습니다. 유전출혈모세혈관확장증(HHT) 진단 기준에 해당하며, PAVM은 HHT에 흔히 동반됩니다.',
+        cite:'Curaçao 기준' },
+    ],
+    missed:{
+      h:'놓치기 쉬운 지점',
+      t:'SpO₂ 91%는 우좌단락을 시사합니다. PAVM은 폐 모세혈관을 우회시켜 역설색전과 뇌농양 위험을 높이므로, 확진 전이라도 뇌 영상 검사를 함께 고려합니다.',
+    },
+  },
+  {
+    id:'RC-021', who:'58세 여성', cc:'발열 · 화농성 객담',
+    rarity:'common', active:false, film:null,
+  },
+  {
+    id:'RC-033', who:'34세 남성', cc:'갑작스런 흉통 · 호흡곤란',
+    rarity:'common', active:true, film:'ptx',
+    intro:'두 시간 전 갑자기 시작된 오른쪽 흉통으로 내원했습니다.',
+    vitals:[['SpO₂','94 %',false],['BP','126/78',false],['HR','104 /min',true],['RR','24 /min',true]],
+    questions:[
+      { q:'언제부터 아프기 시작했나요?',
+        a:'두 시간쯤 전에요. 가만히 앉아 있다가 갑자기 오른쪽 가슴이 찌르듯 아팠어요.' },
+      { q:'숨 쉴 때 더 아픈가요?',
+        a:'네, 크게 들이쉬면 확 아파요. 숨도 좀 차고요.' },
+      { q:'키와 체중이 어떻게 되나요?',
+        a:'187cm에 62kg입니다. 원래 마른 편이에요.' },
+      { q:'흡연력이 있으신가요?',
+        a:'하루 반 갑 정도 피웁니다.' },
+    ],
+    orders:[
+      { key:'cxr', label:'흉부 X-ray (PA)', ready:true },
+      { key:'ct',  label:'흉부 CT',         ready:false },
+      { key:'ecg', label:'심전도',           ready:false },
+    ],
+    study:{ name:'흉부 X-ray PA', acc:'DEMO-2026-0918', approved:'2026-09-03' },
+    findings:[
+      { id:'f1', text:'우측 폐첨부에 흉막선, 그 바깥으로 폐혈관 음영 소실', correct:true },
+      { id:'f2', text:'우하폐야 경계가 뚜렷한 결절', correct:false },
+      { id:'f3', text:'양측 폐문 림프절 종대', correct:false },
+      { id:'f4', text:'좌측 대량 흉수', correct:false },
+    ],
+    diagnoses:[
+      { id:'d1', text:'원발성 자연기흉', correct:true },
+      { id:'d2', text:'폐색전증',       correct:false },
+      { id:'d3', text:'심근경색',       correct:false },
+      { id:'d4', text:'늑막염',         correct:false },
+    ],
+    answer:'원발성 자연기흉',
+    feedback:[
+      { t:'**흉막선(pleural line)과 그 바깥의 폐혈관 음영 소실**이 진단적입니다. 흉막선 안쪽으로만 혈관 음영이 보이는지 반드시 확인하세요.',
+        cite:'흉부영상의학 §4.2' },
+      { t:'**키 크고 마른 젊은 남성 흡연자**는 원발성 자연기흉의 전형적 위험군입니다. 187cm·62kg, 흡연력이 모두 일치합니다.',
+        cite:'BTS 흉막질환 지침' },
+    ],
+    missed:{
+      h:'먼저 배제할 것',
+      t:'긴장성 기흉은 응급입니다. 기관 편위, 저혈압, 경정맥 확장이 있으면 영상 확인을 기다리지 않고 즉시 감압합니다. 이 환자는 혈압이 유지되고 기관 편위가 없어 해당하지 않습니다.',
+    },
+  },
+  {
+    id:'RC-047', who:'27세 여성', cc:'건강검진',
+    rarity:'normal', active:false, film:null,
+  },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   영상 플레이스홀더
+   실제 의료영상이 아니다. 데모 흐름을 보여주기 위해 코드로
+   그린 도식적 렌더링이며, 사실적으로 보이지 않도록 의도했다.
+   ═══════════════════════════════════════════════════════════ */
+
+function drawFilm(cv, variant){
+  const W = 520, H = 610;
+  cv.width = W * 2; cv.height = H * 2;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const g = cv.getContext('2d');
+  g.setTransform(2, 0, 0, 2, 0, 0);
+
+  g.fillStyle = '#04070a'; g.fillRect(0, 0, W, H);
+
+  const soft = g.createRadialGradient(W/2, H*0.46, 40, W/2, H*0.46, W*0.72);
+  soft.addColorStop(0,   'rgba(126,142,158,0.30)');
+  soft.addColorStop(0.62,'rgba(84,98,112,0.15)');
+  soft.addColorStop(1,   'rgba(0,0,0,0)');
+  g.fillStyle = soft; g.fillRect(0, 0, W, H);
+
+  const ell = (x,y,rx,ry,fill,rot=0)=>{
+    g.save(); g.translate(x,y); g.rotate(rot);
+    g.beginPath(); g.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    g.fillStyle = fill; g.fill(); g.restore();
+  };
+
+  // lung fields (air = dark)
+  ell(W*0.33, H*0.44, 92, 156, 'rgba(2,4,7,0.90)');
+  ell(W*0.67, H*0.44, 92, 156, 'rgba(2,4,7,0.90)');
+
+  // pulmonary vascular markings — branching from hila outward.
+  // 기흉에서는 흉막선 바깥에서 이 음영이 사라지는 것이 핵심 소견.
+  const drawVessels = (side)=>{
+    const hx = W/2 + side*40, hy = H*0.44;
+    g.strokeStyle = 'rgba(190,204,218,0.26)';
+    for(let i=0;i<7;i++){
+      const a = (-0.85 + i*0.30) * (side>0?1:-1);
+      const len = 68 + (i%3)*26;
+      g.lineWidth = 2.4 - (i%3)*0.55;
+      g.beginPath(); g.moveTo(hx, hy);
+      g.quadraticCurveTo(
+        hx + side*len*0.55, hy + Math.sin(a)*len*0.75,
+        hx + side*len,      hy + Math.sin(a)*len*1.5
+      );
+      g.stroke();
+    }
+  };
+  drawVessels(-1); drawVessels(1);
+
+  // mediastinum + spine
+  const med = g.createLinearGradient(W/2-34,0,W/2+34,0);
+  med.addColorStop(0,'rgba(0,0,0,0)');
+  med.addColorStop(0.5,'rgba(178,192,206,0.42)');
+  med.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle = med; g.fillRect(W/2-34, H*0.13, 68, H*0.56);
+
+  g.strokeStyle = 'rgba(196,208,220,0.20)'; g.lineWidth = 1;
+  for(let i=0;i<11;i++){
+    const y = H*0.16 + i*(H*0.50/11);
+    g.beginPath(); g.moveTo(W/2-13,y); g.lineTo(W/2+13,y); g.stroke();
+  }
+
+  // heart shadow — patient's left, viewer's right in PA
+  ell(W*0.575, H*0.545, 78, 96, 'rgba(160,175,190,0.34)', -0.16);
+
+  // ribs
+  g.lineWidth = 2.1;
+  for(let s=-1; s<=1; s+=2){
+    for(let i=0;i<9;i++){
+      const y = H*0.185 + i*30;
+      g.beginPath();
+      g.strokeStyle = 'rgba(206,218,230,' + (0.30 - i*0.017) + ')';
+      g.moveTo(W/2 + s*16, y);
+      g.quadraticCurveTo(W/2 + s*(112 + i*7), y + 20 + i*7, W/2 + s*(150 + i*3), y + 96 + i*10);
+      g.stroke();
+    }
+  }
+
+  // clavicles
+  g.lineWidth = 4.4; g.strokeStyle = 'rgba(214,226,238,0.38)';
+  [-1,1].forEach(s=>{
+    g.beginPath(); g.moveTo(W/2 + s*14, H*0.155);
+    g.quadraticCurveTo(W/2 + s*80, H*0.118, W/2 + s*152, H*0.152); g.stroke();
+  });
+
+  // diaphragm
+  g.lineWidth = 3; g.strokeStyle = 'rgba(196,210,224,0.44)';
+  [[0.30,0.735],[0.68,0.755]].forEach(([cx,cy])=>{
+    g.beginPath(); g.moveTo(W*cx-108, H*(cy+0.045));
+    g.quadraticCurveTo(W*cx, H*(cy-0.055), W*cx+108, H*(cy+0.052)); g.stroke();
+  });
+  g.fillStyle = 'rgba(96,110,124,0.34)';
+  g.fillRect(0, H*0.80, W, H*0.20);
+
+  /* ── 케이스별 소견 ─────────────────────────────────────── */
+
+  if(variant === 'pavm'){
+    /* 우하폐야(환자 우측 = 화면 좌측)의 경계 뚜렷한 결절 +
+       폐문으로 향하는 굵은 공급/유출 혈관 음영. */
+    const nx = W*0.305, ny = H*0.615;
+
+    g.lineWidth = 3.4; g.strokeStyle = 'rgba(226,236,246,0.50)';
+    g.beginPath(); g.moveTo(nx+11, ny-6);
+    g.quadraticCurveTo(W*0.40, H*0.575, W/2-26, H*0.505); g.stroke();
+    g.lineWidth = 2.6;
+    g.beginPath(); g.moveTo(nx+8, ny+7);
+    g.quadraticCurveTo(W*0.395, H*0.625, W/2-24, H*0.545); g.stroke();
+
+    const nod = g.createRadialGradient(nx, ny, 2, nx, ny, 22);
+    nod.addColorStop(0,   'rgba(240,246,252,0.92)');
+    nod.addColorStop(0.62,'rgba(210,222,234,0.72)');
+    nod.addColorStop(1,   'rgba(150,166,182,0)');
+    g.beginPath(); g.arc(nx, ny, 22, 0, Math.PI*2);
+    g.fillStyle = nod; g.fill();
+  }
+
+  if(variant === 'ptx'){
+    /* 우측(화면 좌측) 폐첨부 기흉.
+       흉막선을 그리고, 그 바깥의 폐혈관 음영을 지운다. */
+    const line = (ctx)=>{
+      ctx.beginPath();
+      ctx.moveTo(W*0.115, H*0.315);
+      ctx.quadraticCurveTo(W*0.185, H*0.135, W*0.415, H*0.175);
+      ctx.quadraticCurveTo(W*0.455, H*0.205, W*0.452, H*0.255);
+    };
+
+    // 흉막선 바깥(폐첨 방향)만 남기고 혈관 음영 제거
+    g.save();
+    g.beginPath();
+    g.moveTo(W*0.09, H*0.32);
+    g.lineTo(W*0.09, H*0.10);
+    g.lineTo(W*0.47, H*0.10);
+    g.lineTo(W*0.452, H*0.255);
+    g.quadraticCurveTo(W*0.455, H*0.205, W*0.415, H*0.175);
+    g.quadraticCurveTo(W*0.185, H*0.135, W*0.115, H*0.315);
+    g.closePath();
+    g.clip();
+    g.fillStyle = 'rgba(3,5,8,0.93)';
+    g.fillRect(W*0.08, H*0.08, W*0.42, H*0.28);
+    g.restore();
+
+    // 허탈된 폐 가장자리 = 얇고 선명한 흉막선
+    g.lineWidth = 2.2;
+    g.strokeStyle = 'rgba(236,244,252,0.86)';
+    line(g); g.stroke();
+
+    g.lineWidth = 6;
+    g.strokeStyle = 'rgba(236,244,252,0.10)';
+    line(g); g.stroke();
+  }
+
+  // film grain
+  const img = g.getImageData(0, 0, cv.width, cv.height);
+  const d = img.data;
+  for(let i=0;i<d.length;i+=4){
+    const n = (Math.random()-0.5)*17;
+    d[i]+=n; d[i+1]+=n; d[i+2]+=n;
+  }
+  g.putImageData(img, 0, 0);
+
+  // vignette
+  g.setTransform(2, 0, 0, 2, 0, 0);
+  const vg = g.createRadialGradient(W/2,H/2,W*0.30,W/2,H/2,W*0.80);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.72)');
+  g.fillStyle = vg; g.fillRect(0,0,W,H);
+}
+
+function Film({ variant }){
+  const ref = useRef(null);
+  useEffect(()=>{ if(ref.current) drawFilm(ref.current, variant); },[variant]);
+  const wm = 'AI 생성 · 교육용 · 진단 사용 금지';
+  return (
+    <div className="film">
+      <canvas ref={ref} aria-label="데모용 흉부 X-ray 스타일 플레이스홀더 이미지" />
+      <div className="wm-corner">SYNTHETIC</div>
+      <div className="lat-mark">R</div>
+      <div className="wm-diag" aria-hidden="true">
+        <span>{wm}<br/>{wm}<br/>{wm}<br/>{wm}<br/>{wm}</span>
+      </div>
+      <div className="wm-bar">
+        <span>AI 생성 영상 · 교육용</span>
+        <span>진단 사용 금지</span>
+      </div>
+    </div>
+  );
+}
+
+/* 근거 문단의 **강조** 처리 */
+function rich(s){
+  return s.split(/(\*\*[^*]+\*\*)/g).map((part,i)=>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2,-2)}</strong>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+
+function App(){
+  const [caseId, setCaseId] = useState('RC-014');
+  const [asked,  setAsked]  = useState([]);
+  const [typing, setTyping] = useState(false);
+  const [phase,  setPhase]  = useState('idle');   // idle | scanning | film
+  const [finding, setFinding] = useState(null);
+  const [dx, setDx] = useState(null);
+  const [graded, setGraded] = useState(false);
+  const chatEnd = useRef(null);
+  const timers = useRef([]);
+
+  const track = (id)=>{ timers.current.push(id); return id; };
+  const clearAll = ()=>{ timers.current.forEach(clearTimeout); timers.current = []; };
+  useEffect(()=>clearAll,[]);
+
+  useEffect(()=>{ chatEnd.current?.scrollIntoView({block:'end'}); },[asked, typing]);
+
+  const cur = CASES.find(c=>c.id===caseId);
+
+  const newSession = (id)=>{
+    clearAll();
+    setCaseId(id); setAsked([]); setTyping(false);
+    setPhase('idle'); setFinding(null); setDx(null); setGraded(false);
+  };
+
+  const ask = (item)=>{
+    if(typing || asked.some(a=>a.q===item.q)) return;
+    setAsked(p=>[...p,{q:item.q,a:null}]);
+    setTyping(true);
+    track(setTimeout(()=>{
+      setAsked(p=>p.map(m=>m.q===item.q?{...m,a:item.a}:m));
+      setTyping(false);
+    }, 620));
+  };
+
+  const order = (o)=>{
+    if(!o.ready || phase!=='idle') return;
+    setPhase('scanning');
+    track(setTimeout(()=>setPhase('film'), 1500));
+  };
+
+  const canSubmit = finding && dx && !graded;
+  const correct = graded
+    && cur.findings.find(f=>f.id===finding)?.correct
+    && cur.diagnoses.find(d=>d.id===dx)?.correct;
+
+  const resOf = (list, picked, id)=>{
+    if(!graded) return undefined;
+    const it = list.find(x=>x.id===id);
+    if(it.correct) return 'ok';
+    return id===picked ? 'miss' : undefined;
+  };
+
+  return (
+    <div className="app">
+
+      <header className="topbar">
+        <div className="brand">
+          <b>RareCase</b>
+          <span>Reading Console</span>
+        </div>
+        <div className="mix" title="희귀 소견만 연속 제시하면 유병률 감각이 무너진다">
+          <span>세션 구성</span>
+          <span className="bars">
+            <i className="on"/><i className="com"/><i className="com"/><i/>
+          </span>
+          <span>희귀 1 : 흔함 2 : 정상 1</span>
+        </div>
+        <div className="spacer"/>
+        <button className="reset" onClick={()=>newSession('RC-014')}>처음부터</button>
+      </header>
+
+      <main className="console">
+
+        {/* ── 케이스 레일 ── */}
+        <section className="pane">
+          <div className="pane-hd">케이스</div>
+          <div className="pane-bd">
+            <div className="caselist">
+              {CASES.map(c=>(
+                <button key={c.id} className="case"
+                        data-sel={c.id===caseId?'1':'0'}
+                        disabled={!c.active}
+                        onClick={()=>c.active && newSession(c.id)}>
+                  <span className="case-id">{c.id}</span>
+                  <span className="case-who">{c.who}</span>
+                  <span className="case-cc">{c.cc}</span>
+                  <span className={'tag ' + c.rarity}>
+                    {c.rarity==='rare'?'희귀':c.rarity==='common'?'흔함':'정상'}
+                  </span>
+                  {!c.active && <span className="tag scope">데모 범위 밖</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── 환자 · 문진 ── */}
+        <section className="pane">
+          <div className="pane-hd">환자 · 문진</div>
+          <div className="pane-bd">
+            <dl className="vitals">
+              {cur.vitals.map(([k,v,flag])=>(
+                <div className="vital" key={k}>
+                  <dt>{k}</dt>
+                  <dd className={flag?'flag':''}>{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="chat">
+              <div className="msg a">
+                <span className="who">환자</span>
+                {cur.who} · {cur.intro}
+              </div>
+              {asked.map((m,i)=>(
+                <React.Fragment key={i}>
+                  <div className="msg q"><span className="who">학습자</span>{m.q}</div>
+                  {m.a && <div className="msg a"><span className="who">환자</span>{m.a}</div>}
+                </React.Fragment>
+              ))}
+              {typing && (
+                <div className="msg a dots" aria-label="환자가 답하는 중">
+                  <i/><i/><i/>
+                </div>
+              )}
+              <div ref={chatEnd}/>
+            </div>
+
+            <div className="sect-label">질문</div>
+            <div className="chips">
+              {cur.questions.map(q=>(
+                <button key={q.q}
+                        className={'chip' + (asked.some(a=>a.q===q.q)?' used':'')}
+                        disabled={typing || asked.some(a=>a.q===q.q)}
+                        onClick={()=>ask(q)}>{q.q}</button>
+              ))}
+            </div>
+
+            <div className="sect-label">검사 오더</div>
+            <div className="orders">
+              {cur.orders.map(o=>(
+                <button key={o.key} className="order"
+                        disabled={!o.ready || phase!=='idle'}
+                        onClick={()=>order(o)}>{o.label}</button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── 뷰어 · 판독 ── */}
+        <section className="pane viewer-pane">
+          <div className="pane-hd">
+            영상 뷰어
+            <span style={{marginLeft:'auto',color:'var(--ok)'}}>● 전문가 승인됨</span>
+          </div>
+
+          <div className="viewer">
+            {phase==='idle' && (
+              <div className="idle">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="1.4">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M3 14l5-4 4 3 3-2 6 4"/>
+                </svg>
+                검사 오더 대기
+              </div>
+            )}
+            {phase==='scanning' && (
+              <div className="scanning">
+                <div className="scanline"/>
+                <div className="scan-txt">촬영 중 · 승인된 영상 불러오는 중</div>
+              </div>
+            )}
+            {phase==='film' && <Film variant={cur.film}/>}
+          </div>
+
+          {phase==='film' && (
+            <div className="study-line">
+              <span><b>STUDY</b> {cur.study.name}</span>
+              <span><b>ACC</b> {cur.study.acc}</span>
+              <span><b>승인</b> {cur.study.approved}</span>
+              <span><b>출처</b> 생성 · 검증 · 승인 완료</span>
+            </div>
+          )}
+
+          <div className="readout">
+            {phase==='film' && !graded && (
+              <React.Fragment>
+                <div className="sect-label">판독 소견 — 하나 선택</div>
+                <div className="opts">
+                  {cur.findings.map((f,i)=>(
+                    <button key={f.id} className="opt" data-on={finding===f.id?'1':'0'}
+                            onClick={()=>setFinding(f.id)}>
+                      <span className="key">{i+1}</span>{f.text}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="sect-label">추정 진단</div>
+                <div className="opts">
+                  {cur.diagnoses.map((d,i)=>(
+                    <button key={d.id} className="opt" data-on={dx===d.id?'1':'0'}
+                            onClick={()=>setDx(d.id)}>
+                      <span className="key">{String.fromCharCode(65+i)}</span>{d.text}
+                    </button>
+                  ))}
+                </div>
+
+                <button className="submit" disabled={!canSubmit}
+                        onClick={()=>setGraded(true)}>
+                  판독 제출
+                </button>
+              </React.Fragment>
+            )}
+
+            {graded && (
+              <React.Fragment>
+                <div className="verdict"
+                     style={correct?null:{borderColor:'var(--bad)',background:'#1A0F0E'}}>
+                  <span className="mark"
+                        style={correct?null:{borderColor:'var(--bad)',color:'var(--bad)'}}>
+                    {correct?'✓':'✕'}
+                  </span>
+                  <div>
+                    <b>{correct ? '정답 · ' + cur.answer : '오답 · 정답은 ' + cur.answer}</b>
+                    <p>사전에 확정된 케이스 정답과 대조한 결과입니다. 시스템은 영상을 판독하지 않습니다.</p>
+                  </div>
+                </div>
+
+                <div className="sect-label">판독 소견</div>
+                <div className="opts">
+                  {cur.findings.map((f,i)=>(
+                    <button key={f.id} className="opt" disabled
+                            data-res={resOf(cur.findings, finding, f.id)}>
+                      <span className="key">{i+1}</span>{f.text}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="sect-label">근거</div>
+                <div className="fb">
+                  {cur.feedback.map((p,i)=>(
+                    <p key={i}>{rich(p.t)}<span className="cite">{p.cite}</span></p>
+                  ))}
+                  <div className="missed">
+                    <h4>{cur.missed.h}</h4>
+                    <p>{cur.missed.t}</p>
+                  </div>
+                </div>
+              </React.Fragment>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <footer className="statusbar">
+        <span className="st"><i className="dot"/>전문가 승인된 영상만 노출</span>
+        <span className="st"><i className="dot"/>판단은 <b>학습자</b>가 합니다</span>
+        <span className="st warn"><i className="dot"/>데모 · 가상 환자 · 실제 의료영상 아님</span>
+        <span className="spacer"/>
+        <span className="st" style={{color:'var(--text-faint)'}}>조회 기록 저장됨</span>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+</body>
+</html>
