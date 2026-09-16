@@ -27,7 +27,9 @@ function makeArchive(name, files, format) {
     fs.writeFileSync(path.join(src, 'images', f), crypto.randomBytes(size));
   }
   const out = path.join(ROOT, name + '.tar.gz');
-  execFileSync('tar', ['--format', format, '-czf', out, '-C', src, 'images']);
+  // Git Bash의 GNU tar는 C:\ 경로를 원격 호스트로 해석한다 → Windows 기본 tar(bsdtar)를 명시
+  const TAR = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:/Windows', 'System32', 'tar.exe') : 'tar';
+  execFileSync(TAR, ['--format', format, '-czf', out, '-C', src, 'images']);
   return { src, url: fileUrl(out), file: out };
 }
 function run(args) {
