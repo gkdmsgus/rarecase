@@ -11,7 +11,8 @@ from docx.oxml import OxmlElement
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIG = os.path.join(ROOT, "docs", "figures")
-OUT = os.path.join(ROOT, "docs", "Clinical_Checkpoint_paper.docx")
+# 워드에서 파일을 열어 둔 채로 다시 만들면 덮어쓰기가 막힌다 → RC_PAPER_OUT으로 경로를 바꿀 수 있다
+OUT = os.environ.get("RC_PAPER_OUT") or os.path.join(ROOT, "docs", "Clinical_Checkpoint_paper.docx")
 
 SANS = "맑은 고딕"
 SERIF = "바탕"
@@ -32,7 +33,7 @@ def para(doc, text="", *, style_size=9.0, bold=False, align=None, font=SERIF,
     pf = p.paragraph_format
     pf.space_after = Pt(space_after)
     pf.space_before = Pt(space_before)
-    pf.line_spacing = 1.06
+    pf.line_spacing = 1.02
     if align is not None:
         p.alignment = align
     if indent_first and align is None:
@@ -57,7 +58,7 @@ def figure(doc, filename, caption, width_cm=7.8):
     p.add_run().add_picture(os.path.join(FIG, filename), width=Cm(width_cm))
     cap = doc.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cap.paragraph_format.space_after = Pt(6)
+    cap.paragraph_format.space_after = Pt(5)
     set_font(cap.add_run(caption), SANS, 8.5)
 
 
@@ -121,7 +122,7 @@ para(doc,
      "시나리오는 급성 비외상성 두통 상황을 대상으로 한다. 학습자는 가상환자에게 필요한 질문을 직접 입력하고, AI는 "
      "전문가가 검수한 증례 사실을 벗어나지 않는 범위에서 환자 발화를 생성한다. 즉 AI는 진단이나 통과 여부를 "
      "판정하지 않고, 자연스러운 상호작용을 구현한다.")
-figure(doc, "architecture.png", "그림 1. 시스템 구성과 생성형 AI의 역할 범위", width_cm=7.2)
+figure(doc, "architecture.png", "그림 1. 시스템 구조", width_cm=5.0)
 
 para(doc, "2. 학습 흐름", style_size=10, bold=True, font=SANS,
      space_before=5, space_after=2, indent_first=False)
@@ -129,7 +130,8 @@ para(doc,
      "학습자는 자유 문진을 통해 발병 양상, 통증의 특성, 동반 증상과 위험 신호를 탐색한다. 이어서 선택한 핵심 신체 "
      "진찰을 시행하고, 필요한 검사를 직접 선택한다. 관찰 화면에서는 교육용 영상을 확인한 뒤 발견한 사실과 해석의 "
      "근거를 메모한다. 마지막으로 이 기록을 보고서 형태로 제출하고, 전문가가 설정한 검토 기준과 비교한다.")
-figure(doc, "ui-history.png", "그림 2. 자유 입력 기반 가상환자 문진 화면", width_cm=5.9)
+figure(doc, "flow.png", "그림 2. 학습 흐름", width_cm=6.0)
+figure(doc, "ui-history.png", "그림 3. 자유 입력 기반 가상환자 문진 화면", width_cm=4.8)
 
 para(doc, "3. 교육용 영상의 적용 범위", style_size=10, bold=True, font=SANS,
      space_before=5, space_after=2, indent_first=False)
@@ -137,7 +139,7 @@ para(doc,
      "제안 화면의 CT는 사용자 경험과 관찰·기록 흐름 검증을 위한 합성 교육용 이미지이다. 따라서 실제 환자 영상이 "
      "아니며, 임상 판독이나 진단을 위한 자료로 사용하지 않는다. 서비스 적용 단계에서는 비식별화 및 전문가 검수가 "
      "완료된 교육용 영상 자료로 대체하고, 각 영상의 교육 목적과 판독 범위를 명확히 표시한다.")
-figure(doc, "ui-imaging.png", "그림 3. 합성 교육용 CT 관찰 및 메모 화면", width_cm=5.9)
+figure(doc, "ui-imaging.png", "그림 4. 합성 교육용 CT 관찰 및 메모 화면", width_cm=4.8)
 
 para(doc, "4. AI 활용 범위와 안전 설계", style_size=10, bold=True, font=SANS,
      space_before=5, space_after=2, indent_first=False)
@@ -232,7 +234,7 @@ refs = [
     "scoping review. 2026. PubMed PMID: 41663620.",
 ]
 for r in refs:
-    p = para(doc, r, style_size=8, space_after=2, indent_first=False)
+    p = para(doc, r, style_size=7.5, space_after=1, indent_first=False)
     p.paragraph_format.left_indent = Cm(0.5)
     p.paragraph_format.first_line_indent = Cm(-0.5)
 
