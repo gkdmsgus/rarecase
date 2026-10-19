@@ -1,0 +1,35 @@
+{
+ "header": "2026년 한국실천공학교육학회 학술발표대회 논문집. Vol.1, No.1, 2026",
+ "title_ko": "생성형 AI 기반 가상환자 문진과 근거 보고서형 디브리핑을 결합한 임상추론 교육 시뮬레이터 설계",
+ "authors_ko": "김민정, 박다윗, 하은현, 황선희",
+ "affil_ko": "동양미래대학교 컴퓨터소프트웨어공학과",
+ "emails": "jk1232259@naver.com, deasoon2004@gmail.com, gkdmsgus0422@gmail.com, hankuk@dongyang.ac.kr",
+ "title_en": "Design of a Clinical Reasoning Education Simulator Combining Generative AI-Based Virtual Patient Interviews and Evidence-Report Debriefing",
+ "authors_en": "Minjeong Kim, Dawit Park, Eunhyeong Ha, Sunhee Hwang",
+ "affil_en": "*Department of Computer Software Engineering, Dongyang Mirae University",
+ "abstract": "본 연구에서는 생성형 AI 기반 가상환자와의 자유 문진, 신체 진찰, 검사 선택, 교육용 의료영상 관찰 및 근거보고서형 디브리핑을 통합한 웹 기반 임상추론 교육 시뮬레이터 Clinical Checkpoint를 제안하였다. 학습자는 가상환자와의 문진을 통해 임상 단서를 탐색하고 필요한 검사와 진찰을 선택한 후, 관찰 결과와 판단 근거를 보고서로 작성한다. 생성형 AI는 전문가가 검수한 증례 범위에서 가상환자 응답과 학습 기록의 구조화를 지원하며, 진단이나 치료 판단에는 사용하지 않는다. 제안 시스템은 고위험 및 희귀 임상증례를 반복적으로 경험하고 학습자의 임상추론 과정을 체계적으로 학습할 수 있는 교육 환경을 제공하고자 한다.",
+ "keywords": "Key Words : Generative AI, Virtual patient, Education Simulator, Medical, LLM",
+ "intro": [
+  "임상추론은 환자로부터 얻은 정보를 바탕으로 중요한 임상 단서를 식별하고 이를 종합하여 필요한 질문과 검사, 후속 판단의 근거를 형성하는 역량이다[1]. 따라서 임상교육에서는 최종 진단을 맞히는 것뿐만 아니라 학습자가 환자에게 어떤 질문을 하고, 다음 판단과 연결하는지 반복적으로 경험하는 것이 중요하다. 그러나 실제 임상환경에서는 다양한 증례를 교육 목적으로 반복하여 경험하기 어렵고, 특히 발생 빈도가 낮거나 신속한 판단이 필요한 고위험 증례는 충분한 학습 기회를 확보하기 어렵다. 이러한 한계를 보완하기 위해 가상환자를 활용한 시뮬레이션 교육이 활용되고 있으며, 선행연구에서는 가상환자 기반 교육이 임상추론을 포함한 임상 역량 학습에 활용된다[2].",
+  "최근 생성형 AI와 대규모 언어모델의 발전으로 가상환자와 자연어로 자유롭게 문진하고 환자의 응답에 따라 후속 질문을 이어가는 대화형 임상교육 환경을 구현할 수 있게 되었다[3,4]. 생성형 AI 기반 가상환자는 학습자가 필요한 질문을 직접 구성할 수 있어 실제 문진에 가까운 상호작용을 제공할 수 있다. 그러나 임상추론 교육은 자연스러운 대화만으로 완성되는 것이 아니라 문진에서 확인한 정보가 신체 진찰, 검사 선택, 의료영상 관찰 및 판단 근거로 연결되어야 한다. 이에 본 연구에서는 생성형 AI 기반 가상환자 문진부터 전문가 검토 기반 디브리핑까지 하나의 학습 과정으로 연결한 웹 기반 임상추론 교육 시뮬레이터 Clinical Checkpoint를 설계하였다."
+ ],
+ "fig1_caption": "그림 1. 시스템 구조",
+ "body1": "제안하는 Clinical Checkpoint는 생성형 AI 기반 가상환자 문진, 신체 진찰, 검사 선택, 교육용 의료영상 관찰 및 근거보고서형 디브리핑을 통합한 웹 기반 임상추론 교육 시스템이다. 그림 1은 제안 시스템의 전체 구조를 나타낸다. 학습자가 문장으로 질문하면 생성형 AI는 전문가가 사전에 검수한 증례 정보를 기반으로 가상환자의 응답을 생성하며, 이후 학습자가 선택한 진찰과 검사 결과를 확인하고 교육 자료를 확인한다. 각 단계에서 생성된 문진 내용과 관찰 기록, 검사 선택의 근거는 학습 보고서로 통합되며, 최종적으로 전문가의 검토 기준과 비교하여 학습자의 임상추론 과정을 확인할 수 있도록 설계하였다.",
+ "fig2_caption": "그림 2. 학습 흐름",
+ "fig3_caption": "그림 3. 자유 입력 기반 가상환자 문진 화면",
+ "fig4_caption": "그림 4. 합성 교육용CT 관찰 및 메모 화면",
+ "body2": [
+  "그림 2는 Clinical Checkpoint의 단계별 학습 흐름을 나타낸다. 학습자는 먼저 가상환자와의 자유 문진을 통해 발병 양상, 통증의 특성, 동반 증상 및 위험 신호를 탐색하고, 확인한 정보를 바탕으로 필요한 신체 진찰과 검사를 직접 선택한다. 그림 3과 같이 문진 과정에서는 미리 제시된 선택지를 선택하는 대신 학습자가 필요한 질문을 직접 입력하고, 환자의 응답에 따라 후속 질문을 구성하도록 하였다. 이후 검사 단계에서는 선택한 교육용 의료영상을 직접 관찰하고 주요 소견과 판단 근거를 기록한다. 그림 4는 CT 영상의 관찰 및 메모 화면을 보여준다. 현재 적용된 CT 영상은 시스템의 관찰 및 기록 과정을 구현하기 위한 합성 교육용 이미지이며, 실제 교육 적용 단계에서는 비식별화와 임상전문가의 검수가 완료된 교육용 영상 자료를 활용하도록 구성하였다.",
+  "생성형 AI는 임상적 의사결정을 수행하는 주체가 아니라 가상환자와의 자연스러운 상호작용을 지원하는 도구로 활용하였다. AI의 역할은 전문가가 검수한 증례 정보에 근거한 가상환자 응답 생성과 문진 및 관찰 기록의 구조화로 제한하며, 최종 진단이나 치료 지시, 실제 환자 상태에 대한 판정은 수행하지 않는다. 초기 시나리오는 급성 비외상성 두통을 대상으로 하며, 학습자가 발병 양상과 동반 증상 및 위험 신호를 확인하고 필요한 진찰과 검사를 선택하는 과정을 학습하도록 구성하였다. 특히 증례 내용과 주요 확인 단서, 검사 및 영상 자료, 디브리핑 기준은 임상전문가의 검수를 전제로 하여 생성형 AI의 응답 범위와 교육적 활용 범위를 명확히 구분하였다.",
+  "학습 종료 후에는 문진에서 확인한 임상 단서, 진찰 및 검사 선택의 이유, 영상에서 관찰한 소견과 판단 근거를 하나의 학습 보고서로 제출한다. 표 1은 이러한 과정에서 학습자, AI 및 전문가가 담당하는 역할을 단계별로 구분하여 보여준다. 학습자는 질문과 관찰을 통해 정보를 수집하고 자신의 판단 근거를 작성하며, AI는 검수된 증례 범위에서 가상환자의 응답 생성과 기록 구조화를 지원한다. 교수자 또는 임상전문가는 보고서를 통해 학습자가 확인한 주요 단서와 누락된 단서, 검사 선택의 근거 및 불확실성에 대한 인식을 검토한다. 따라서 본 시스템의 디브리핑은 AI가 진단의 정오를 자동으로 판정하는 방식이 아니라 학습자가 어떠한 정보를 수집하고 이를 어떤 근거로 판단에 연결하였는지를 전문가 기준에 따라 검토하는 방식으로 구성하였다."
+ ],
+ "table_caption": "표1. 단계별 학습자·AI·전문가의 역할 구분",
+ "table": [["단계", "학습자 수행", "AI 및 전문가 역할"], ["문진", "자유 문장으로 질문", "검수 범위 안의 환자 응답 생성"], ["관찰", "진찰·교육용 영상 관찰 기록", "기록 구조화 / 영상 검수"], ["보고서", "판단과 근거 제출", "전문가 기준으로 피드백"]],
+ "conclusion": "본 연구는 생성형AI를 진단 도구가 아닌 상호작용 및 학습 근거 구조화 도구로 활용한 임상추론 교육 시뮬레이터를 제안하였다. 자유 문진, 핵심 진찰, 교육용 영상 관찰, 근거보고서 제출을 하나의 학습 흐름으로 연결함으로써 희귀 및 응급 증례 학습의 반복성과 설명 가능성을 높일 수 있다. 향후 전문가 검수 증례와 교육용 영상 자료를 연동하고 교육 효과를 검증하면 실습 수업을 보완하는 교육 매체로 확장될 수 있다.",
+ "refs": [
+  "Eva, K. W. (2005). What every teacher needs to know about clinical reasoning. Medical Education, 39(1), 98-106.",
+  "Kononowicz, A. A., Woodham, L. A., Edelbring, S., Stathakarou, N., Davies, D., Saxena, N., Tudor Car, L., Carlstedt-Duke, J., Car, J., & Zary, N. (2019). Virtual patient simulations in health professions education: Systematic review and meta-analysis by the Digital Health Education Collaboration. Journal of Medical Internet Research, 21(7).",
+  "Cook, D. A. (2025). Creating virtual patients using large language models: Scalable, global, and low cost. Medical Teacher, 47(1), 40-42.",
+  "Cook, D. A., Overgaard, J., Pankratz, V. S., Del Fiol, G., & Aakre, C. A. (2025). Virtual patients using large language models: Scalable, contextualized simulation of clinician-patient dialogue with feedback. Journal of Medical Internet Research, 27, e68486."
+ ]
+}
