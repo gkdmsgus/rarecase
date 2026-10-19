@@ -32,6 +32,15 @@ npm start
 
 선택지 id와 순서는 비밀값으로 정한다. `RARECASE_SECRET`(16자 이상)을 정하면 재시작해도 같고, 정하지 않으면 서버를 켤 때마다 바뀐다.
 
+## Clinical Checkpoint (논문 시스템)
+
+논문 「생성형 AI 기반 가상환자 문진과 근거보고서형 디브리핑을 결합한 임상추론 교육 시뮬레이터 설계」의 학습 흐름을 구현한 모드. 개발 서버에서 http://127.0.0.1:5173/#cc 로 연다.
+
+- 흐름: 가상환자 문진(자유 입력) → 신체 진찰 → 검사 선택 → CT 관찰(관찰 핀) → 근거보고서 → 디브리핑
+- 증례: CC-001 급성 비외상성 두통 (`server/cc/case-headache.js`, 작성 시나리오, **의학 검수 전**이라 화면에 "확인 필요")
+- 문진 응답은 증례에 등록된 사실 목록 안에서만 만든다. 서버에 `ANTHROPIC_API_KEY`가 있으면 Claude(`claude-opus-5-5`)가 그 범위 안에서 말투를 만들고, 없거나 실패하면 규칙 기반 엔진이 사실 문장을 그대로 고른다.
+- 디브리핑은 미리 정한 검토 기준과 대조할 뿐, 시스템이 진단의 정오를 판정하지 않는다. CT는 도식 그림이다.
+
 ## 검사
 
 ```bash
@@ -44,6 +53,7 @@ npm test
 | `tools/test-server.js` | 미승인 케이스가 응답에 없음, 채점 전 정답 비노출, 서버 채점이 모든 조합에서 원래 채점과 같음, 잘못된 채점 요청 거부, 노출 허용 데이터셋만, 경로 탈출 차단 |
 | `tools/test-nih-extract.cjs` | NIH 압축 스트리밍 추출 |
 | `tools/test-rsna-truth.cjs` | RSNA 정답 규칙 v1과 실제 정답 목록 불변 조건 |
+| `tools/test-cc.js` | Clinical Checkpoint: 정답 비노출, 문진 범위, Claude 실패 시 되돌아가기, 디브리핑 대조, 요청 검사 |
 
 ## 구조
 
@@ -56,6 +66,8 @@ npm test
 | `server/app.js` | `/api/cases`, `POST /api/grade`, `/data/<dataset>/*.png`, 배포 모드 정적 파일 |
 | `server/public-case.js` | 학습자용 케이스(정답·근거·핵심 문진 표시 제거, 선택지 id 불투명화·순서 섞기)와 서버 채점 |
 | `server/index.js` | 배포 모드 서버 |
+| `server/cc/` | Clinical Checkpoint 증례(`case-headache.js`)와 엔진(`engine.js`: 공개 정보, 문진, 진찰·검사, 디브리핑) |
+| `src/cc/` | Clinical Checkpoint 화면 (문진·진찰·검사·CT·보고서·디브리핑) |
 | `data/manifest/` | 공개 데이터셋 매니페스트 (해시·라벨·메타데이터만, 영상 없음) |
 | `tools/` | 데이터 수집·검사 스크립트 |
 | `docs/data-plan.md` | 데이터셋 라이선스 조사, 정답 규칙, 진행 기록 |

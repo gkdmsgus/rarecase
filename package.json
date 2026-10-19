@@ -8,17 +8,20 @@
     "dev": "vite",
     "build": "vite build",
     "start": "node server/index.js",
-    "test": "node tools/check-cases.cjs && node tools/test-server.js && node tools/test-nih-extract.cjs && node tools/test-rsna-truth.cjs"
+    "test": "node tools/check-cases.cjs && node tools/test-server.js && node tools/test-nih-extract.cjs && node tools/test-rsna-truth.cjs && node tools/test-cc.js"
   },
   "engines": {
     "node": ">=22.12"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.1",
+    "playwright-core": "1.64.1",
     "vite": "8.3.0"
   }
 }
