@@ -11,3 +11,6 @@ dist/
 # never commit real patient data or real medical images (principle 7)
 data/private/
 *.dcm
+
+# demo recording frames (rebuild with tools/demo)
+docs/demo/raw/
