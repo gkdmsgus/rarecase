@@ -30,7 +30,10 @@ function PatientCard({ c }) {
   const p = c.patient;
   return (
     <section className="cc-card cc-patient">
-      <div className="ph"><PatientAvatar pain={0.7} /></div>
+      <div className={'ph' + (p.photo ? ' photo' : '')}>
+        {p.photo ? <img src={p.photo.url} alt={`가상환자 ${p.alias}(가명) 사진`} /> : <PatientAvatar pain={0.7} />}
+      </div>
+      {p.photo && <div className="credit" title={p.photo.sourceUrl}>사진: {p.photo.attribution} · 실제 환자 아님(설정)</div>}
       <div className="info">
         <div className="name">{p.alias}<small>(가명)</small></div>
         <div className="meta">{p.age}세 · {p.sex === 'F' ? '여성' : '남성'}</div>
@@ -292,10 +295,10 @@ export default function ClinicalCheckpoint({ onExit }) {
               <div className="cc-grid two">
                 <section className="cc-card">
                   <h3>{c.imaging.title}</h3>
-                  <CtViewer pins={pins} pinning={pinning} onTogglePin={() => setPinning((v) => !v)}
+                  <CtViewer image={c.imaging.image} pins={pins} pinning={pinning} onTogglePin={() => setPinning((v) => !v)}
                             onAddPin={(p) => setPins((ps) => (ps.length >= 9 ? ps : [...ps, p]))} />
                   <div className="cc-caption">
-                    {c.imaging.caption} · 도식으로 그린 그림이며 실제 의료영상이 아닙니다.
+                    {c.imaging.caption}{c.imaging.image ? <> · 출처: {c.imaging.image.attribution}</> : ' · 도식으로 그린 그림이며 실제 의료영상이 아닙니다.'}
                     {pins.length > 0 && <> · 핀 {pins.length}개 <button type="button" className="cc-ghost" style={{ padding: '1px 8px', marginLeft: 6 }} onClick={() => setPins([])}>핀 지우기</button></>}
                   </div>
                 </section>
@@ -352,7 +355,7 @@ export default function ClinicalCheckpoint({ onExit }) {
                 <div><span>확인한 단서</span><b>{result.clues.filter((x) => x.found).length} / {result.clues.length}</b></div>
                 <div><span>필수 진찰</span><b>{result.exams.filter((x) => x.required && x.done).length} / {result.exams.filter((x) => x.required).length}</b></div>
                 <div><span>필수 검사</span><b>{result.tests.filter((x) => x.fit === 'required' && x.ordered).length} / {result.tests.filter((x) => x.fit === 'required').length}</b></div>
-                <div><span>영상 핀</span><b>{result.imaging.pinInRegion ? '영역 안' : result.imaging.pins ? '영역 밖' : '없음'}</b></div>
+                <div><span>영상 핀</span><b>{result.imaging.pinInRegion === null ? `${result.imaging.pins}개 기록` : result.imaging.pinInRegion ? '영역 안' : result.imaging.pins ? '영역 밖' : '없음'}</b></div>
               </div>
               <div className="cc-grid two" style={{ marginBottom: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
                 <section className="cc-card">
@@ -371,8 +374,9 @@ export default function ClinicalCheckpoint({ onExit }) {
                   }))} />
                   <h3 style={{ marginTop: 16 }}>영상 관찰</h3>
                   <Rows items={[{
-                    key: 'img', cls: result.imaging.pinInRegion ? 'ok' : 'miss', badge: result.imaging.pinInRegion ? '표시' : '확인',
-                    text: `${result.imaging.criterion} — 기준 영역: ${result.imaging.region.label}`,
+                    key: 'img', cls: result.imaging.pinInRegion ? 'ok' : result.imaging.pinInRegion === null ? 'na' : 'miss',
+                    badge: result.imaging.pinInRegion ? '표시' : result.imaging.pinInRegion === null ? '기록' : '확인',
+                    text: result.imaging.region ? `${result.imaging.criterion} — 기준 영역: ${result.imaging.region.label}` : `${result.imaging.criterion} — 이 영상에는 출처가 밝힌 위치 기준이 없어 핀 위치는 대조하지 않습니다`,
                   }]} />
                 </section>
               </div>
@@ -400,7 +404,7 @@ export default function ClinicalCheckpoint({ onExit }) {
         <footer className="cc-foot">
           <span>교육용 시뮬레이터 · 실제 진단에 사용하지 않습니다</span>
           <span>가상 환자 · 가명</span>
-          <span>영상은 도식 그림이며 실제 의료영상이 아닙니다</span>
+          <span>{c.imaging.image ? '영상은 공개 이미지이며 교육용입니다 · 진단 사용 금지' : '영상은 도식 그림이며 실제 의료영상이 아닙니다'}</span>
         </footer>
       </div>
     </div>

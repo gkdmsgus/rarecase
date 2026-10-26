@@ -77,9 +77,10 @@ function draw(cv) {
   g.fillStyle = '#cbd5e1'; g.font = '600 16px sans-serif'; g.fillText('R', 14, H / 2); g.fillText('L', W - 26, H / 2);
 }
 
-export default function CtViewer({ pins, pinning, onTogglePin, onAddPin }) {
+/* image가 있으면(라이선스 확인된 공개 CT) 그 사진을 보여 주고, 없으면 도식을 그린다 */
+export default function CtViewer({ image, pins, pinning, onTogglePin, onAddPin }) {
   const ref = useRef(null);
-  useEffect(() => { if (ref.current) draw(ref.current); }, []);
+  useEffect(() => { if (ref.current && !image) draw(ref.current); }, [image]);
 
   const click = (e) => {
     if (!pinning) return;
@@ -93,12 +94,14 @@ export default function CtViewer({ pins, pinning, onTogglePin, onAddPin }) {
   return (
     <div className={'cc-ct' + (pinning ? ' pinning' : '')}>
       <div className="stage">
-        <canvas ref={ref} onClick={click} aria-label="도식으로 그린 비조영 두부 CT. 실제 의료영상이 아님" />
+        {image
+          ? <img src={image.url} onClick={click} alt="공개 비조영 두부 CT 영상 (교육용, 진단 사용 금지)" draggable={false} />
+          : <canvas ref={ref} onClick={click} aria-label="도식으로 그린 비조영 두부 CT. 실제 의료영상이 아님" />}
         {pins.map((p, i) => (
           <span key={i} className="cc-pin" style={{ left: p.x * 100 + '%', top: p.y * 100 + '%' }}>{i + 1}</span>
         ))}
       </div>
-      <span className="cc-wm">SYNTHETIC</span>
+      <span className="cc-wm">{image ? '공개 이미지 · 교육용 · 진단 사용 금지' : 'SYNTHETIC'}</span>
       <button type="button" className={'cc-pinbtn' + (pinning ? ' on' : '')} onClick={onTogglePin}>
         {pinning ? '핀 표시 중 · 끄기' : '관찰 핀 표시'}
       </button>

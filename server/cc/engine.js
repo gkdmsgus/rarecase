@@ -9,22 +9,28 @@
    - debrief     : 사전에 정한 검토 기준과 대조한다. 시스템이 진단의 정오를 판정하지 않는다 (원칙 2).
    ═══════════════════════════════════════════════════════════ */
 
+import { publicMedia } from './media.js';
+
 export const CLAUDE_MODEL = 'claude-opus-5-5';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
-export function publicCase(c) {
+export function publicCase(c, media = {}) {
+  const photo = publicMedia(media['patient-photo']);
+  const ct = publicMedia(media.ct);
   return {
     id: c.id,
     title: c.title,
     reviewed: c.reviewed,
     source: c.source,
-    patient: c.patient,
+    patient: { ...c.patient, photo },
     vitals: c.vitals,
     opening: c.opening,
     exams: c.exams.map(({ id, label }) => ({ id, label })),
     tests: c.tests.map(({ id, label, imaging }) => ({ id, label, imaging: !!imaging })),
-    imaging: { id: c.imaging.id, title: c.imaging.title, caption: c.imaging.caption },
+    imaging: ct
+      ? { id: c.imaging.id, title: c.imaging.title, caption: '공개 이미지 · 교육용 · 진단 사용 금지 · 이 가상 환자의 영상이 아니라 다른 실제 증례의 예시 영상', image: ct }
+      : { id: c.imaging.id, title: c.imaging.title, caption: c.imaging.caption, image: null },
   };
 }
 
@@ -111,7 +117,7 @@ export function test(c, body) {
 
 const FIT_TEXT = { required: '필수', reasonable: '타당', conditional: '조건부', 'low-yield': '우선순위 낮음' };
 
-export function debrief(c, body) {
+export function debrief(c, body, media = {}) {
   const b = body || {};
   const ids = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 100) : []);
   const factIds = new Set(ids(b.factIds));
@@ -129,8 +135,9 @@ export function debrief(c, body) {
   const exams = c.exams.map((e) => ({ id: e.id, label: e.label, required: e.required, done: examIds.has(e.id) }));
   const tests = c.tests.map((t) => ({ id: t.id, label: t.label, fit: t.fit, fitText: FIT_TEXT[t.fit], ordered: testIds.has(t.id) }));
 
-  const k = c.imaging.keyRegion;
-  const pinHits = pins.map((p) => Math.hypot(p.x - k.x, p.y - k.y) <= k.r);
+  // 실제 CT를 쓰면 위치 기준은 매니페스트의 region(출처가 밝힌 위치)만 쓴다. 없으면 위치 대조를 하지 않는다
+  const k = media.ct ? (media.ct.region || null) : c.imaging.keyRegion;
+  const pinHits = k ? pins.map((p) => Math.hypot(p.x - k.x, p.y - k.y) <= k.r) : [];
 
   return {
     result: {
@@ -141,7 +148,7 @@ export function debrief(c, body) {
       imaging: {
         viewed: !!b.imagingViewed,
         pins: pins.length,
-        pinInRegion: pinHits.some(Boolean),
+        pinInRegion: k ? pinHits.some(Boolean) : null,
         region: k,
         criterion: c.review.imagingFinding,
       },

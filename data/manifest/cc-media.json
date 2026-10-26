@@ -1,0 +1,37 @@
+{
+  "note": "Clinical Checkpoint 실제 사진 매니페스트. 파일은 저장소 밖 DATA_ROOT/cc-media/ 에 둔다. 서버는 여기 있고 sha256이 맞는 파일만 보낸다 (server/cc/media.js). 라이선스는 2026-10-26 원문 페이지를 열어 확인했다.",
+  "items": [
+    {
+      "id": "ct",
+      "file": "ct-sah-hellerhoff.jpg",
+      "sha256": "33fe96aa82a233c58dbeae61cbd659378941989430b5e8d3c2e9a05490c5846e",
+      "sha1_commons": "dea5f2a18cc919c542c55235c4183bca7b0c9138",
+      "width": 934,
+      "height": 1168,
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "author": "Hellerhoff",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:SAB_basal_bei_Aneurysma.jpg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c5/SAB_basal_bei_Aneurysma.jpg",
+      "attribution": "\"SAB basal bei Aneurysma\" by Hellerhoff, CC BY-SA 3.0, via Wikimedia Commons (원본 그대로, 화면 표기만 덧붙임)",
+      "description": "동맥류성 기저조 지주막하 출혈, 비조영 축상 두부 CT. 올린 사람(영상의학과 전문의)의 설명 기준. 여러 판독자 합의 라벨이 아니므로 채점에 쓰지 않는 예시 영상이다 (원칙 4).",
+      "burnedInText": false,
+      "verifiedOn": "2026-10-26"
+    },
+    {
+      "id": "patient-photo",
+      "file": "patient-unsplash-GwgFPDXiSIs.jpg",
+      "sha256": "89a55c6496f208504e14c1924ae6ec75eff173742300da8862c9ad64b9dc81e8",
+      "width": 1600,
+      "height": 1065,
+      "license": "Unsplash License",
+      "licenseUrl": "https://unsplash.com/license",
+      "author": "Stephen Andrews",
+      "sourceUrl": "https://unsplash.com/photos/GwgFPDXiSIs",
+      "originalUrl": "https://images.unsplash.com/photo-1633219664572-473fd988a44f?w=1600&q=85&fm=jpg",
+      "attribution": "Photo by Stephen Andrews on Unsplash (연출 사진)",
+      "description": "병상에서 정맥주사를 맞는 손. 얼굴은 초점 밖이라 알아볼 수 없다. 알아볼 수 있는 인물 사진은 약관상 환자로 묘사할 수 없어 쓰지 않는다 (Pexels 약관 ailment 조항, Unsplash 약관 5조).",
+      "verifiedOn": "2026-10-26"
+    }
+  ]
+}

@@ -174,5 +174,44 @@ await test('HTTP: Claude 클라이언트를 넣으면 그 엔진으로 답한다
 });
 s.close();
 
+// ── 6. 실제 사진 (매니페스트·해시 확인) ─────────────────
+await test('실제 사진: 매니페스트에 있고 해시가 맞는 파일만 보내고, 화면 정보에 출처가 붙는다', async () => {
+  const os = await import('node:os'); const crypto = await import('node:crypto');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-media-'));
+  fs.mkdirSync(path.join(tmp, 'cc-media'));
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  fs.writeFileSync(path.join(tmp, 'cc-media', 'patient.png'), png);
+  fs.writeFileSync(path.join(tmp, 'cc-media', 'ct.png'), png);
+  fs.writeFileSync(path.join(tmp, 'cc-media', 'stray.png'), png);
+  const sha = crypto.createHash('sha256').update(png).digest('hex');
+  const base = { license: 'CC BY 4.0', author: 'A', sourceUrl: 'https://example.org/x', attribution: 'A / CC BY 4.0' };
+  const manifest = path.join(tmp, 'm.json');
+  fs.writeFileSync(manifest, JSON.stringify({ items: [
+    { ...base, id: 'patient-photo', file: 'patient.png', sha256: sha },
+    { ...base, id: 'ct', file: 'ct.png', sha256: '0'.repeat(64) },          // 해시 불일치 → 빠짐
+  ] }));
+  const sv = await serve(createHandler({ dataRoot: tmp, ccMediaManifest: manifest, ccClient: null, log: quiet }));
+  const c = (await call(sv, 'GET', '/api/cc/case')).body;
+  assert.strictEqual(c.patient.photo.url, '/data/cc-media/patient.png'); assert.strictEqual(c.patient.photo.attribution, base.attribution);
+  assert.strictEqual(c.imaging.image, null, '해시가 다른 CT가 노출됨');
+  const get = (u) => fetch(`http://127.0.0.1:${sv.address().port}${u}`).then((r) => r.status);
+  assert.strictEqual(await get('/data/cc-media/patient.png'), 200);
+  assert.strictEqual(await get('/data/cc-media/ct.png'), 404);
+  assert.strictEqual(await get('/data/cc-media/stray.png'), 404);
+  assert.strictEqual(await get('/data/cc-media/..%2fm.json'), 404);
+  sv.close();
+});
+await test('실제 CT에 위치 기준(region)이 없으면 핀 위치를 대조하지 않는다', () => {
+  const media = { ct: { url: '/x', region: undefined } };
+  const r = debrief(CASE, { pins: [{ x: 0.5, y: 0.54 }] }, media).result.imaging;
+  assert.strictEqual(r.pinInRegion, null); assert.strictEqual(r.region, null);
+  const r2 = debrief(CASE, { pins: [{ x: 0.5, y: 0.5 }] }, { ct: { region: { x: 0.5, y: 0.5, r: 0.1, label: 'L' } } }).result.imaging;
+  assert.strictEqual(r2.pinInRegion, true);
+});
+await test('사진이 없으면 일러스트·도식으로 돌아간다 (기본 매니페스트는 비어 있음)', () => {
+  const pc = publicCase(CASE, {});
+  assert.strictEqual(pc.patient.photo, null); assert.strictEqual(pc.imaging.image, null);
+});
+
 results.forEach((x) => console.log(x));
 console.log(`\n${passed}/${results.length} passed`);
