@@ -1,0 +1,28 @@
+// 실제 사진 연결 확인용 캡처: 환자 카드(문진 화면)와 CT 화면. 실행: node tools/demo/shot-media.mjs <출력 폴더>
+import { chromium } from 'playwright-core';
+const out = process.argv[2] || '.';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1536, height: 864 }, deviceScaleFactor: 1.25 });
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+const imgs = [];
+page.on('response', (r) => { if (r.url().includes('/data/cc-media/')) imgs.push(`${r.status()} ${r.url().split('/data/')[1]}`); });
+await page.goto('http://127.0.0.1:5173/#cc', { waitUntil: 'networkidle' });
+await page.screenshot({ path: `${out}/shot-interview.png` });
+await page.getByLabel('환자에게 할 질문').fill('두통이 언제부터 어떻게 시작됐나요?');
+await page.keyboard.press('Enter');
+await page.waitForFunction(() => document.querySelectorAll('.cc-chat .cc-msg.pt').length > 1);
+await page.locator('.cc-next').click();
+await page.getByRole('button', { name: '경부 강직 확인', exact: true }).click();
+await page.locator('.cc-next').click();
+await page.getByRole('button', { name: '비조영 두부 CT', exact: true }).click();
+await page.locator('.cc-next').click();
+await page.locator('.cc-ct img').waitFor();
+await page.locator('.cc-pinbtn').click();
+const b = await page.locator('.cc-ct img').boundingBox();
+await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.45);
+await page.screenshot({ path: `${out}/shot-ct.png` });
+const nat = await page.locator('.cc-ct img').evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+console.log(JSON.stringify({ images: imgs, ctNatural: nat, errors }));
+await browser.close();

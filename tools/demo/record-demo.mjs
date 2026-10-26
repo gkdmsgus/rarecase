@@ -172,16 +172,19 @@ await click(page.getByRole('button', { name: '혈액검사 (혈구·응고·전�
 await until(110);
 
 // 컷 7 — CT 관찰 (1:50–2:10)
-await cut(7, '선택한 교육용 영상을 직접 관찰하고 소견을 기록합니다. 지금 보이는 CT는 시스템 시연을 위한 합성 교육용 도식 이미지입니다.');
+await cut(7, '선택한 교육용 영상을 직접 관찰하고 소견을 기록합니다. 지금 보이는 CT는 이 가상 환자가 아닌 다른 실제 증례의 공개 예시 영상입니다.');
 await click(page.locator('.cc-next'));
-await page.locator('.cc-ct canvas').waitFor();
-const canvas = page.locator('.cc-ct canvas');
+// 실제 공개 CT(img)가 있으면 그것을, 없으면 도식(canvas)을 쓴다
+const canvas = page.locator('.cc-ct img, .cc-ct canvas').first();
+await canvas.waitFor();
+const realCt = (await page.locator('.cc-ct img').count()) > 0;
+const pinY = realCt ? 0.45 : 0.542;   // 실제 영상: 기저조 쪽 가운데 / 도식: 밝은 영역 중심
 const cb = await canvas.boundingBox();
 await page.mouse.move(cb.x + cb.width * 0.3, cb.y + cb.height * 0.35, { steps: 20 }); await sleep(700);
 await page.mouse.move(cb.x + cb.width * 0.7, cb.y + cb.height * 0.4, { steps: 20 }); await sleep(700);
 await click(page.locator('.cc-pinbtn'));
-await page.mouse.move(cb.x + cb.width * 0.5, cb.y + cb.height * 0.542, { steps: 22 }); await sleep(400);
-await page.mouse.click(cb.x + cb.width * 0.5, cb.y + cb.height * 0.542); await sleep(600);
+await page.mouse.move(cb.x + cb.width * 0.5, cb.y + cb.height * pinY, { steps: 22 }); await sleep(400);
+await page.mouse.click(cb.x + cb.width * 0.5, cb.y + cb.height * pinY); await sleep(600);
 await type(page.locator('.cc-memo textarea'), '기저조 주변에 밝은(고음영) 영역이 보임', 60);
 await until(130);
 
